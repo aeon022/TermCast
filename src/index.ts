@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 import { renderSvgFrame } from './renderer/svg';
 import { renderHtmlEmbed } from './renderer/html';
 import { startPreviewServer } from './server';
-import { validatePolarLicense } from './license';
+import { validatePolarLicense, saveLicenseKey, clearSavedLicense, getSavedLicenseKey } from './license';
 import { RenderOptions, TerminalFrame, ThemeName, GradientPreset, PromptStyle } from './types';
 
 const program = new Command();
@@ -15,6 +15,48 @@ program
   .name('termcast')
   .description('Pretty Terminal SVG & GIF Studio CLI for GitHub READMEs and Demos')
   .version('0.1.0');
+
+// License Management Command
+program
+  .command('license [key]')
+  .description('Activate, check, or clear Polar.sh Pro license key')
+  .option('--clear', 'Clear stored license key')
+  .option('--status', 'Check active license status')
+  .action(async (key, options) => {
+    try {
+      if (options.clear) {
+        await clearSavedLicense();
+        console.log('[TermCast] Saved license key cleared. Switched to Free Tier.');
+        return;
+      }
+
+      if (key) {
+        console.log(`[TermCast] Validating license key: ${key}...`);
+        const result = await saveLicenseKey(key);
+        if (result.valid) {
+          console.log(`\n✨ ${result.message}`);
+          console.log('   License successfully activated and saved locally!\n');
+        } else {
+          console.error(`\n❌ ${result.message}`);
+          console.error('   Please verify your key at https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH\n');
+        }
+        return;
+      }
+
+      // Check current status
+      const activeKey = await getSavedLicenseKey();
+      const result = await validatePolarLicense(activeKey);
+      console.log('\n[TermCast] License Status:');
+      console.log(`  State : ${result.valid ? 'PRO ACTIVE ✓' : 'FREE TIER'}`);
+      console.log(`  Key   : ${activeKey ? activeKey : 'None'}`);
+      console.log(`  Info  : ${result.message}`);
+      if (!result.valid) {
+        console.log('\n💡 Buy Pro License: https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH\n');
+      }
+    } catch (err: any) {
+      console.error(`[TermCast] License error: ${err.message}`);
+    }
+  });
 
 // Demo Command
 program
