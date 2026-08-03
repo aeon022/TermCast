@@ -1,0 +1,43 @@
+{
+  "name": "termcast",
+  "version": "0.1.0",
+  "description": "Pretty Terminal SVG & GIF Studio CLI for GitHub READMEs and Demos by abteilung83",
+  "main": "dist/index.js",
+  "bin": {
+    "termcast": "dist/index.js"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "start": "ts-node src/index.ts"
+  },
+  "keywords": [
+    "cli",
+    "terminal",
+    "svg",
+    "gif",
+    "developer-tools",
+    "readme",
+    "abteilung83"
+  ],
+  "author": "abteilung83",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^12.0.0",
+    "fs-extra": "^11.2.0",
+    "node-fetch": "^2.7.0",
+    "ora": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.11.0",
+    "@types/node-fetch": "^2.6.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
