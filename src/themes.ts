@@ -1,4 +1,14 @@
-import { ThemeColors, ThemeName } from './types';
+import { ThemeColors, ThemeName, GradientPreset } from './types';
+
+export const GRADIENTS: Record<GradientPreset, string> = {
+  default: 'linear-gradient(135deg, #6272a4 0%, #bd93f9 100%)',
+  cyberpunk: 'linear-gradient(135deg, #ff007f 0%, #00f0ff 100%)',
+  sunset: 'linear-gradient(135deg, #ff512f 0%, #dd2476 100%)',
+  matrix: 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)',
+  hyper: 'linear-gradient(135deg, #8A2387 0%, #E94057 50%, #F27121 100%)',
+  neon: 'linear-gradient(135deg, #00F260 0%, #0575E6 100%)',
+  midnight: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%)'
+};
 
 export const THEMES: Record<ThemeName, ThemeColors> = {
   dracula: {
@@ -6,7 +16,7 @@ export const THEMES: Record<ThemeName, ThemeColors> = {
     background: '#282a36',
     foreground: '#f8f8f2',
     titleBar: '#21222c',
-    gradientBackground: 'linear-gradient(135deg, #6272a4 0%, #bd93f9 100%)',
+    gradientBackground: GRADIENTS.default,
     colors: {
       black: '#21222c',
       red: '#ff5555',

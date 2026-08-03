@@ -1,4 +1,6 @@
 export type ThemeName = 'dracula' | 'tokyonight' | 'nord' | 'catppuccin' | 'monokai';
+export type GradientPreset = 'default' | 'cyberpunk' | 'sunset' | 'matrix' | 'hyper' | 'neon' | 'midnight';
+export type PromptStyle = 'none' | 'zsh' | 'starship' | 'bash';
 
 export interface ThemeColors {
   name: string;
@@ -25,6 +27,7 @@ export interface TerminalFrame {
 
 export interface RenderOptions {
   theme?: ThemeName;
+  gradient?: GradientPreset;
   title?: string;
   output?: string;
   fontFamily?: string;
@@ -32,4 +35,7 @@ export interface RenderOptions {
   padding?: number;
   watermark?: boolean;
   licenseKey?: string;
+  animated?: boolean;
+  prompt?: PromptStyle;
+  format?: 'svg' | 'html' | 'both';
 }
