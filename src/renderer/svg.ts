@@ -36,7 +36,6 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
   const contentWidth = Math.max(680, maxCols * (fontSize * 0.62));
   const width = Math.round(contentWidth + padding * 2);
 
-  // Accurate Bounding Box Calculation
   const terminalBodyHeight = (lines.length * lineHeight) + 30;
   const termH = titleBarHeight + terminalBodyHeight;
   const height = Math.round(termH + padding * 2 + (showWatermark ? 25 : 0));
@@ -62,20 +61,23 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
     textSvgLines += `    <text x="${termX + 20}" y="${yPos}" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="${fontSize}px" ${animClass}>${lineInnerSvg}</text>\n`;
   });
 
-  // Calculate exact cursor position right after last character on last line
+  // Calculate cursor placement right after last character on last line
   const lastLine = lines[lines.length - 1] || '';
   const cleanLastLine = lastLine.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
   const cursorX = termX + 20 + Math.round(cleanLastLine.length * (fontSize * 0.605));
   const cursorY = termY + titleBarHeight + 24 + ((lines.length - 1) * lineHeight) - 12;
 
-  // Pure CSS Keyframe Animation Styles
+  // Calculate timing sync for cursor
+  const totalTypingTimeSec = (0.15 + (lines.length * 0.25)).toFixed(2);
+
+  // Synchronized CSS Keyframe Animation Styles
   const animationStyles = isAnimated ? `
     <style>
       .animated-line {
         opacity: 0;
-        animation: fadeInLine 0.3s forwards;
+        animation: fadeInLine 0.25s forwards;
       }
-      ${lines.map((_, i) => `.line-${i} { animation-delay: ${0.15 + (i * 0.25)}s; }`).join('\n')}
+      ${lines.map((_, i) => `.line-${i} { animation-delay: ${(0.15 + (i * 0.25)).toFixed(2)}s; }`).join('\n')}
 
       @keyframes fadeInLine {
         from { opacity: 0; transform: translateY(3px); }
@@ -83,11 +85,14 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
       }
 
       .cursor {
-        animation: blink 1s infinite;
+        opacity: 0;
+        animation: blinkCursor 1s infinite;
+        animation-delay: ${totalTypingTimeSec}s;
       }
-      @keyframes blink {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0; }
+
+      @keyframes blinkCursor {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0; }
       }
     </style>
   ` : '';
