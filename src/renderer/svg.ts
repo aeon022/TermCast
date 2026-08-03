@@ -18,7 +18,7 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
     fullRawText = `\x1b[36m📁 my-app\x1b[0m on \x1b[35m🌿 main\x1b[0m \x1b[33m[⚡ 42ms]\x1b[0m\n❯ ${fullRawText}`;
   }
 
-  const lines = fullRawText.split(/\r?\n/);
+  const lines = fullRawText.split(/\r?\n/).filter((l, i, arr) => i < arr.length - 1 || l.trim().length > 0);
 
   const fontSize = options.fontSize || 14;
   const lineHeight = Math.round(fontSize * 1.45);
@@ -26,27 +26,29 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
   const titleBarHeight = 36;
 
   let maxCols = 60;
-  for (const line of lines) {
+  lines.forEach(line => {
     const cleanLine = line.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
     if (cleanLine.length > maxCols) {
       maxCols = cleanLine.length;
     }
-  }
+  });
 
   const contentWidth = Math.max(680, maxCols * (fontSize * 0.62));
   const width = Math.round(contentWidth + padding * 2);
-  const contentHeight = Math.max(120, lines.length * lineHeight);
-  const height = Math.round(contentHeight + titleBarHeight + padding * 2 + (showWatermark ? 25 : 0));
+
+  // Accurate Bounding Box Calculation
+  const terminalBodyHeight = (lines.length * lineHeight) + 30;
+  const termH = titleBarHeight + terminalBodyHeight;
+  const height = Math.round(termH + padding * 2 + (showWatermark ? 25 : 0));
 
   const termX = padding;
   const termY = padding;
   const termW = width - padding * 2;
-  const termH = height - padding * 2 - (showWatermark ? 25 : 0);
 
   let textSvgLines = '';
   lines.forEach((line, index) => {
     const spans = parseAnsiToStyledSpans(line, theme);
-    const yPos = termY + titleBarHeight + 25 + (index * lineHeight);
+    const yPos = termY + titleBarHeight + 24 + (index * lineHeight);
 
     let lineInnerSvg = '';
     spans.forEach(span => {
@@ -60,6 +62,12 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
     textSvgLines += `    <text x="${termX + 20}" y="${yPos}" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="${fontSize}px" ${animClass}>${lineInnerSvg}</text>\n`;
   });
 
+  // Calculate exact cursor position right after last character on last line
+  const lastLine = lines[lines.length - 1] || '';
+  const cleanLastLine = lastLine.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+  const cursorX = termX + 20 + Math.round(cleanLastLine.length * (fontSize * 0.605));
+  const cursorY = termY + titleBarHeight + 24 + ((lines.length - 1) * lineHeight) - 12;
+
   // Pure CSS Keyframe Animation Styles
   const animationStyles = isAnimated ? `
     <style>
@@ -67,10 +75,10 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
         opacity: 0;
         animation: fadeInLine 0.3s forwards;
       }
-      ${lines.map((_, i) => `.line-${i} { animation-delay: ${0.2 + (i * 0.4)}s; }`).join('\n')}
+      ${lines.map((_, i) => `.line-${i} { animation-delay: ${0.15 + (i * 0.25)}s; }`).join('\n')}
 
       @keyframes fadeInLine {
-        from { opacity: 0; transform: translateY(4px); }
+        from { opacity: 0; transform: translateY(3px); }
         to { opacity: 1; transform: translateY(0); }
       }
 
@@ -85,7 +93,7 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
   ` : '';
 
   const cursorSvg = isAnimated ? `
-    <rect x="${termX + 20}" y="${termY + titleBarHeight + 25 + ((lines.length - 1) * lineHeight) - 12}" width="8" height="15" fill="${theme.colors.green}" class="cursor" />
+    <rect x="${cursorX}" y="${cursorY}" width="8" height="15" fill="${theme.colors.green}" class="cursor" />
   ` : '';
 
   const watermarkSvg = showWatermark ? `
@@ -96,7 +104,6 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
     </g>
   ` : '';
 
-  // Extract gradient colors for SVG linearGradient
   const gradMatch = gradientCss.match(/linear-gradient\([^,]+,\s*([^0-9]+)[0-9]+%\s*,\s*([^0-9]+)[0-9]+%\)/);
   const stop1 = gradMatch ? gradMatch[1].trim() : theme.colors.blue;
   const stop2 = gradMatch ? gradMatch[2].trim() : theme.colors.magenta;
