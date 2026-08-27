@@ -315,11 +315,17 @@ export function renderAnimatedGridFrames(frames: Frame[], options: RenderOptions
 
   frames.forEach((frame, i) => {
     const startPct = (frame.timestampMs / totalDurationMs) * 100;
-    const nextTimestamp = i < frames.length - 1 ? frames[i + 1].timestampMs : totalDurationMs;
-    const endPct = Math.min(100, (nextTimestamp / totalDurationMs) * 100);
+    const isLast = i === frames.length - 1;
     const lines = renderFrameLines(frame, geom);
     framesBody += `    <g class="rec-frame" style="animation-name: frame-${i};">\n${lines}    </g>\n`;
-    styles += `<style>@keyframes frame-${i} { 0% { opacity: 0; } ${startPct.toFixed(3)}% { opacity: 1; } ${endPct.toFixed(3)}% { opacity: 0; } 100% { opacity: 0; } }</style>\n`;
+
+    if (isLast) {
+      styles += `<style>@keyframes frame-${i} { 0% { opacity: 0; } ${startPct.toFixed(3)}% { opacity: 1; } 100% { opacity: 1; } }</style>\n`;
+    } else {
+      const nextTimestamp = frames[i + 1].timestampMs;
+      const endPct = Math.min(100, (nextTimestamp / totalDurationMs) * 100);
+      styles += `<style>@keyframes frame-${i} { 0% { opacity: 0; } ${startPct.toFixed(3)}% { opacity: 1; } ${endPct.toFixed(3)}% { opacity: 0; } 100% { opacity: 0; } }</style>\n`;
+    }
   });
 
   return buildChrome(geom, options, framesBody, styles, showWatermark);

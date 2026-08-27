@@ -35,3 +35,13 @@ test('renderAnimatedGridFrames with multiple frames includes a keyframe per fram
   assert.match(svg, /@keyframes frame-0/);
   assert.match(svg, /@keyframes frame-1/);
 });
+
+test('renderAnimatedGridFrames: last frame keyframe keeps opacity: 1 at 100%', () => {
+  const svg = renderAnimatedGridFrames([makeFrame('a', 0), makeFrame('b', 100), makeFrame('c', 200)], { watermark: false });
+  // Regression: the last frame (frame-2) must keep opacity: 1 all the way to 100%
+  // so the final frame stays visible during the full animation duration
+  assert.match(svg, /@keyframes frame-2/);
+  // Extract the frame-2 keyframe rule and verify it ends with opacity: 1 at 100%
+  const frame2Match = svg.match(/@keyframes frame-2[^<]*/);
+  assert.ok(frame2Match && frame2Match[0].includes('100% { opacity: 1; }'), 'frame-2 keyframe should have 100% { opacity: 1; }');
+});
