@@ -37,5 +37,35 @@ export interface RenderOptions {
   licenseKey?: string;
   animated?: boolean;
   prompt?: PromptStyle;
-  format?: 'svg' | 'html' | 'both';
+  format?: 'svg' | 'html' | 'gif' | 'both';
+}
+
+export interface Cell {
+  char: string;
+  fg: string;
+  bg: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+}
+
+export interface Frame {
+  grid: Cell[][];
+  cursorX: number;
+  cursorY: number;
+  cursorVisible: boolean;
+  timestampMs: number;
+}
+
+export interface RecordOptions {
+  cols?: number;
+  rows?: number;
+  fps?: number;
+  maxDurationMs?: number;
+  theme?: ThemeName;
+}
+
+export interface RecordResult {
+  frames: Frame[];
+  rawText: string;
 }
