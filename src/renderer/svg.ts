@@ -309,12 +309,16 @@ export function renderAnimatedGridFrames(frames: Frame[], options: RenderOptions
   const rows = frames[0].grid.length;
   const geom = computeChromeGeometry(cols, rows, options, showWatermark);
   const totalDurationMs = Math.max(1, frames[frames.length - 1].timestampMs);
+  // Pad the animation loop to give the last frame a non-zero-length window
+  // to be visible in before the loop wraps back to frame-0
+  const FINAL_FRAME_HOLD_MS = 800;
+  const animDurationMs = totalDurationMs + FINAL_FRAME_HOLD_MS;
 
   let framesBody = '';
-  let styles = `<style>.rec-frame { opacity: 0; animation-duration: ${totalDurationMs}ms; animation-iteration-count: infinite; animation-timing-function: steps(1, end); }</style>\n`;
+  let styles = `<style>.rec-frame { opacity: 0; animation-duration: ${animDurationMs}ms; animation-iteration-count: infinite; animation-timing-function: steps(1, end); }</style>\n`;
 
   frames.forEach((frame, i) => {
-    const startPct = (frame.timestampMs / totalDurationMs) * 100;
+    const startPct = (frame.timestampMs / animDurationMs) * 100;
     const isLast = i === frames.length - 1;
     const lines = renderFrameLines(frame, geom);
     framesBody += `    <g class="rec-frame" style="animation-name: frame-${i};">\n${lines}    </g>\n`;
@@ -323,7 +327,7 @@ export function renderAnimatedGridFrames(frames: Frame[], options: RenderOptions
       styles += `<style>@keyframes frame-${i} { 0% { opacity: 0; } ${startPct.toFixed(3)}% { opacity: 1; } 100% { opacity: 1; } }</style>\n`;
     } else {
       const nextTimestamp = frames[i + 1].timestampMs;
-      const endPct = Math.min(100, (nextTimestamp / totalDurationMs) * 100);
+      const endPct = (nextTimestamp / animDurationMs) * 100;
       styles += `<style>@keyframes frame-${i} { 0% { opacity: 0; } ${startPct.toFixed(3)}% { opacity: 1; } ${endPct.toFixed(3)}% { opacity: 0; } 100% { opacity: 0; } }</style>\n`;
     }
   });
