@@ -1,4 +1,4 @@
-import { RenderOptions, TerminalFrame, ThemeName, GradientPreset } from '../types';
+import { RenderOptions, TerminalFrame, ThemeName, GradientPreset, Frame, Cell } from '../types';
 import { THEMES, GRADIENTS } from '../themes';
 import { parseAnsiToStyledSpans, escapeXml } from '../parser';
 
@@ -148,4 +148,179 @@ ${cursorSvg}  </g>
 
   ${watermarkSvg}
 </svg>`;
+}
+
+function cellsToTspans(row: Cell[]): string {
+  let out = '';
+  let i = 0;
+  while (i < row.length) {
+    const cell = row[i];
+    let text = cell.char;
+    let j = i + 1;
+    while (
+      j < row.length &&
+      row[j].fg === cell.fg &&
+      row[j].bg === cell.bg &&
+      !!row[j].bold === !!cell.bold &&
+      !!row[j].italic === !!cell.italic &&
+      !!row[j].underline === !!cell.underline
+    ) {
+      text += row[j].char;
+      j++;
+    }
+    const styleAttrs = [
+      `fill="${cell.fg}"`,
+      cell.bold ? 'font-weight="bold"' : '',
+      cell.italic ? 'font-style="italic"' : '',
+      cell.underline ? 'text-decoration="underline"' : ''
+    ].filter(Boolean).join(' ');
+    out += `<tspan ${styleAttrs}>${escapeXml(text)}</tspan>`;
+    i = j;
+  }
+  return out;
+}
+
+interface ChromeGeometry {
+  width: number;
+  height: number;
+  termX: number;
+  termY: number;
+  termW: number;
+  termH: number;
+  titleBarHeight: number;
+  fontSize: number;
+  lineHeight: number;
+}
+
+function computeChromeGeometry(cols: number, rows: number, options: RenderOptions, showWatermark: boolean): ChromeGeometry {
+  const fontSize = options.fontSize || 14;
+  const lineHeight = Math.round(fontSize * 1.45);
+  const padding = options.padding || 35;
+  const titleBarHeight = 36;
+  const charWidth = fontSize * 0.62;
+
+  const contentWidth = Math.max(680, cols * charWidth);
+  const width = Math.round(contentWidth + padding * 2);
+  const terminalBodyHeight = (rows * lineHeight) + 30;
+  const termH = titleBarHeight + terminalBodyHeight;
+  const height = Math.round(termH + padding * 2 + (showWatermark ? 25 : 0));
+
+  return {
+    width, height,
+    termX: padding, termY: padding, termW: width - padding * 2, termH,
+    titleBarHeight, fontSize, lineHeight
+  };
+}
+
+// Renders the window chrome (background gradient, title bar, traffic-light
+// dots, watermark) shared by both the static and animated grid renderers.
+// bodyContent is the already-built <g>...</g> markup for the terminal text;
+// extraStyles is an optional <style> block (used by the animated renderer
+// for its per-frame @keyframes).
+function buildChrome(
+  geom: ChromeGeometry,
+  options: RenderOptions,
+  bodyContent: string,
+  extraStyles: string,
+  showWatermark: boolean
+): string {
+  const themeName = (options.theme || 'dracula') as ThemeName;
+  const theme = THEMES[themeName] || THEMES.dracula;
+  const gradientCss = options.gradient ? (GRADIENTS[options.gradient] || GRADIENTS.default) : theme.gradientBackground;
+  const windowTitle = options.title || 'termcast — zsh';
+  const { width, height, termX, termY, termW, termH, titleBarHeight } = geom;
+
+  const gradMatch = gradientCss.match(/linear-gradient\([^,]+,\s*([^0-9]+)[0-9]+%\s*,\s*([^0-9]+)[0-9]+%\)/);
+  const stop1 = gradMatch ? gradMatch[1].trim() : theme.colors.blue;
+  const stop2 = gradMatch ? gradMatch[2].trim() : theme.colors.magenta;
+
+  const watermarkSvg = showWatermark ? `
+    <g transform="translate(${width - 210}, ${height - 15})">
+      <text font-family="-apple-system, system-ui, sans-serif" font-size="11px" fill="#888888">
+        Crafted with <tspan fill="#0066FF" font-weight="bold">TermCast</tspan>
+      </text>
+    </g>
+  ` : '';
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${stop1}"/>
+      <stop offset="100%" stop-color="${stop2}"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  ${extraStyles}
+  <rect width="${width}" height="${height}" fill="url(#bgGrad)" rx="12"/>
+  <g filter="url(#shadow)">
+    <rect x="${termX}" y="${termY}" width="${termW}" height="${termH}" rx="10" fill="${theme.background}"/>
+    <path d="M${termX} ${termY + 10} C${termX} ${termY + 4} ${termX + 4} ${termY} ${termX + 10} ${termY} L${termX + termW - 10} ${termY} C${termX + termW - 4} ${termY} ${termX + termW} ${termY + 4} ${termX + termW} ${termY + 10} L${termX + termW} ${termY + titleBarHeight} L${termX} ${termY + titleBarHeight} Z" fill="${theme.titleBar}"/>
+    <circle cx="${termX + 18}" cy="${termY + 18}" r="6" fill="#FF5F56"/>
+    <circle cx="${termX + 38}" cy="${termY + 18}" r="6" fill="#FFBD2E"/>
+    <circle cx="${termX + 58}" cy="${termY + 18}" r="6" fill="#27C93F"/>
+    <text x="${termX + termW / 2}" y="${termY + 22}" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="12px" font-weight="600" fill="${theme.foreground}" opacity="0.75">${escapeXml(windowTitle)}</text>
+  </g>
+  <g xml:space="preserve">
+${bodyContent}  </g>
+  ${watermarkSvg}
+</svg>`;
+}
+
+function renderFrameLines(frame: Frame, geom: ChromeGeometry): string {
+  let lines = '';
+  frame.grid.forEach((row, index) => {
+    const yPos = geom.termY + geom.titleBarHeight + 24 + (index * geom.lineHeight);
+    lines += `    <text x="${geom.termX + 20}" y="${yPos}" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="${geom.fontSize}px">${cellsToTspans(row)}</text>\n`;
+  });
+  return lines;
+}
+
+// Renders a single Frame (by default the last one in a recording) as a
+// static SVG — this is the grid-driven equivalent of the existing
+// text-based renderSvgFrame, used for real recordings instead of demo's
+// synthetic TerminalFrame text.
+export function renderGridFrame(frame: Frame, options: RenderOptions = {}): string {
+  const showWatermark = options.watermark !== false;
+  const cols = frame.grid[0]?.length || 80;
+  const rows = frame.grid.length;
+  const geom = computeChromeGeometry(cols, rows, options, showWatermark);
+  const body = renderFrameLines(frame, geom);
+  return buildChrome(geom, options, body, '', showWatermark);
+}
+
+// Renders every frame in a recording as a single animated SVG: each frame
+// is a <g> shown only during its real captured time window (CSS step
+// keyframes keyed to the frame's timestamp as a % of total duration), so
+// playback matches the actual recording instead of simulating typing over
+// static final output.
+export function renderAnimatedGridFrames(frames: Frame[], options: RenderOptions = {}): string {
+  if (frames.length === 0) {
+    throw new Error('renderAnimatedGridFrames requires at least one frame');
+  }
+  if (frames.length === 1) {
+    return renderGridFrame(frames[0], options);
+  }
+
+  const showWatermark = options.watermark !== false;
+  const cols = frames[0].grid[0]?.length || 80;
+  const rows = frames[0].grid.length;
+  const geom = computeChromeGeometry(cols, rows, options, showWatermark);
+  const totalDurationMs = Math.max(1, frames[frames.length - 1].timestampMs);
+
+  let framesBody = '';
+  let styles = `<style>.rec-frame { opacity: 0; animation-duration: ${totalDurationMs}ms; animation-iteration-count: infinite; animation-timing-function: steps(1, end); }</style>\n`;
+
+  frames.forEach((frame, i) => {
+    const startPct = (frame.timestampMs / totalDurationMs) * 100;
+    const nextTimestamp = i < frames.length - 1 ? frames[i + 1].timestampMs : totalDurationMs;
+    const endPct = Math.min(100, (nextTimestamp / totalDurationMs) * 100);
+    const lines = renderFrameLines(frame, geom);
+    framesBody += `    <g class="rec-frame" style="animation-name: frame-${i};">\n${lines}    </g>\n`;
+    styles += `<style>@keyframes frame-${i} { 0% { opacity: 0; } ${startPct.toFixed(3)}% { opacity: 1; } ${endPct.toFixed(3)}% { opacity: 0; } 100% { opacity: 0; } }</style>\n`;
+  });
+
+  return buildChrome(geom, options, framesBody, styles, showWatermark);
 }
