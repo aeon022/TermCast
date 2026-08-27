@@ -2,11 +2,12 @@
 import { Command } from 'commander';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { execSync } from 'child_process';
-import { renderSvgFrame } from './renderer/svg';
+import { renderSvgFrame, renderGridFrame, renderAnimatedGridFrames } from './renderer/svg';
 import { renderHtmlEmbed } from './renderer/html';
 import { startPreviewServer } from './server';
 import { validatePolarLicense, saveLicenseKey, clearSavedLicense, getSavedLicenseKey } from './license';
+import { recordCommand } from './recorder';
+import { encodeGif } from './gif';
 import { RenderOptions, TerminalFrame, ThemeName, GradientPreset, PromptStyle } from './types';
 
 const program = new Command();
@@ -119,60 +120,75 @@ program
 // Render Command
 program
   .command('render <cmd>')
-  .description('Run shell command and render terminal output as pretty SVG or HTML')
+  .description('Run a command and record its real terminal output as SVG, GIF, or HTML')
   .option('-t, --theme <name>', 'Theme: dracula, tokyonight, nord, catppuccin, monokai', 'dracula')
   .option('-g, --gradient <name>', 'Gradient: default, cyberpunk, sunset, matrix, hyper, neon, midnight', 'cyberpunk')
   .option('-o, --output <path>', 'Output filepath', 'terminal-output')
   .option('--title <title>', 'Window title bar text', 'termcast — zsh')
-  .option('--animated', 'Enable CSS typing keyframe animation')
+  .option('--animated', 'Play back the real recorded frames as an animated SVG')
   .option('--prompt <style>', 'Prompt style: zsh, starship, bash, none', 'zsh')
-  .option('--format <type>', 'Output format: svg, html, both', 'svg')
+  .option('--format <type>', 'Output format: svg, html, gif, both', 'svg')
+  .option('--fps <n>', 'Frames sampled per second while recording', '10')
+  .option('--max-duration <seconds>', 'Stop recording after this many seconds', '30')
+  .option('--cols <n>', 'Terminal columns to record at', String(process.stdout.columns || 80))
+  .option('--rows <n>', 'Terminal rows to record at', String(process.stdout.rows || 24))
   .option('-l, --license <key>', 'Polar.sh Pro License Key')
   .action(async (cmdString, options) => {
     try {
       const licenseCheck = await validatePolarLicense(options.license);
       console.log(`[TermCast] License Status: ${licenseCheck.message}`);
-      console.log(`[TermCast] Executing command: "${cmdString}"...`);
+      console.log(`[TermCast] Recording: "${cmdString}"...`);
 
-      let outputText = '';
-      try {
-        outputText = execSync(cmdString, { encoding: 'utf8', env: { ...process.env, FORCE_COLOR: '1' } });
-      } catch (execErr: any) {
-        outputText = execErr.stdout || execErr.stderr || execErr.message;
-      }
+      const fps = parseInt(options.fps, 10) || 10;
+      const cols = parseInt(options.cols, 10) || 80;
+      const rows = parseInt(options.rows, 10) || 24;
+      const maxDurationMs = (parseInt(options.maxDuration, 10) || 30) * 1000;
 
-      const frames: TerminalFrame[] = [
-        { text: `${cmdString}`, delayMs: 100 },
-        { text: outputText, delayMs: 500 }
-      ];
+      const { frames, rawText } = await recordCommand(cmdString, {
+        cols, rows, fps, maxDurationMs, theme: options.theme as ThemeName
+      });
 
       const renderOpts: RenderOptions = {
         theme: options.theme as ThemeName,
         gradient: options.gradient as GradientPreset,
         title: options.title || `zsh — ${cmdString}`,
         watermark: !licenseCheck.valid,
-        animated: options.animated,
         prompt: options.prompt as PromptStyle
       };
 
       const format = options.format || 'svg';
-      const baseOutput = options.output.replace(/\.(svg|html)$/, '');
+      const baseOutput = options.output.replace(/\.(svg|html|gif)$/, '');
 
       if (format === 'svg' || format === 'both') {
-        const svgContent = renderSvgFrame(frames, renderOpts);
+        const svgContent = options.animated
+          ? renderAnimatedGridFrames(frames, renderOpts)
+          : renderGridFrame(frames[frames.length - 1], renderOpts);
         const svgPath = path.resolve(`${baseOutput}.svg`);
         await fs.writeFile(svgPath, svgContent, 'utf8');
         console.log(`  ✨ Created SVG: ${svgPath}`);
       }
 
       if (format === 'html' || format === 'both') {
-        const htmlContent = renderHtmlEmbed(frames, renderOpts);
+        // HTML output stays on the original text-based renderer for now —
+        // recordCommand's rawText accumulator exists specifically so this
+        // path keeps working unchanged (see plan Global Constraints).
+        const htmlContent = renderHtmlEmbed(
+          [{ text: rawText, delayMs: 0 }],
+          renderOpts
+        );
         const htmlPath = path.resolve(`${baseOutput}.html`);
         await fs.writeFile(htmlPath, htmlContent, 'utf8');
         console.log(`  ✨ Created HTML Embed: ${htmlPath}`);
       }
 
-      console.log('\n[TermCast] Execution finished successfully.\n');
+      if (format === 'gif') {
+        const gifBuffer = await encodeGif(frames, renderOpts, fps);
+        const gifPath = path.resolve(`${baseOutput}.gif`);
+        await fs.writeFile(gifPath, gifBuffer);
+        console.log(`  ✨ Created GIF: ${gifPath}`);
+      }
+
+      console.log('\n[TermCast] Recording finished successfully.\n');
       if (!licenseCheck.valid) {
         console.log('💡 Remove watermark & unlock custom gradients: https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH');
       }
@@ -184,35 +200,33 @@ program
 // Serve (Preview) Command
 program
   .command('serve <cmd>')
-  .description('Run command and launch instant live web preview in browser')
+  .description('Record a command and launch an instant live web preview in the browser')
   .option('-t, --theme <name>', 'Theme: dracula, tokyonight, nord, catppuccin, monokai', 'dracula')
   .option('-g, --gradient <name>', 'Gradient: default, cyberpunk, sunset, matrix, hyper, neon, midnight', 'cyberpunk')
   .option('--prompt <style>', 'Prompt style: zsh, starship, bash, none', 'zsh')
-  .option('--animated', 'Enable CSS typing keyframe animation')
-  .action((cmdString, options) => {
+  .option('--animated', 'Play back the real recorded frames as an animated SVG')
+  .action(async (cmdString, options) => {
     try {
-      console.log(`[TermCast] Executing: "${cmdString}" for live preview...`);
-      let outputText = '';
-      try {
-        outputText = execSync(cmdString, { encoding: 'utf8', env: { ...process.env, FORCE_COLOR: '1' } });
-      } catch (execErr: any) {
-        outputText = execErr.stdout || execErr.stderr || execErr.message;
-      }
+      console.log(`[TermCast] Recording: "${cmdString}" for live preview...`);
 
-      const frames: TerminalFrame[] = [
-        { text: `${cmdString}`, delayMs: 100 },
-        { text: outputText, delayMs: 500 }
-      ];
+      const cols = process.stdout.columns || 80;
+      const rows = process.stdout.rows || 24;
+      const { frames } = await recordCommand(cmdString, {
+        cols, rows, fps: 10, maxDurationMs: 30000, theme: options.theme as ThemeName
+      });
 
       const renderOpts: RenderOptions = {
         theme: options.theme as ThemeName,
         gradient: options.gradient as GradientPreset,
         title: `zsh — ${cmdString}`,
-        animated: options.animated,
         prompt: options.prompt as PromptStyle
       };
 
-      startPreviewServer(frames, renderOpts, 3333);
+      const svg = options.animated
+        ? renderAnimatedGridFrames(frames, renderOpts)
+        : renderGridFrame(frames[frames.length - 1], renderOpts);
+
+      startPreviewServer(svg, 3333);
     } catch (err: any) {
       console.error(`[TermCast] Preview Error: ${err.message}`);
     }
