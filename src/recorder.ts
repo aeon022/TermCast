@@ -80,6 +80,7 @@ export function recordCommand(cmdString: string, options: RecordOptions = {}): P
     let rawText = '';
     const startedAt = Date.now();
     let finished = false;
+    let lastWritePending: Promise<void> = Promise.resolve();
 
     frames.push(snapshotFrame(term, themeName, 0));
 
@@ -98,18 +99,26 @@ export function recordCommand(cmdString: string, options: RecordOptions = {}): P
       finished = true;
       clearInterval(sampleInterval);
       clearTimeout(maxDurationTimer);
-      frames.push(snapshotFrame(term, themeName, Date.now() - startedAt));
-      try {
-        ptyProcess.kill();
-      } catch {
-        // already exited — killing an exited process throws, that's fine
-      }
-      resolve({ frames, rawText });
+      // Wait for the last term.write() to flush into the buffer before
+      // snapshotting — @xterm/headless's write() is asynchronous, so an
+      // exit-triggered snapshot taken synchronously can race ahead of the
+      // final chunk of output still being parsed into the buffer.
+      lastWritePending.then(() => {
+        frames.push(snapshotFrame(term, themeName, Date.now() - startedAt));
+        try {
+          ptyProcess.kill();
+        } catch {
+          // already exited — killing an exited process throws, that's fine
+        }
+        resolve({ frames, rawText });
+      });
     }
 
     ptyProcess.onData((data) => {
       rawText += data;
-      term.write(data);
+      lastWritePending = new Promise((res) => {
+        term.write(data, () => res());
+      });
     });
 
     ptyProcess.onExit(() => {
