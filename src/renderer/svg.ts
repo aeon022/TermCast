@@ -2,6 +2,11 @@ import { RenderOptions, TerminalFrame, ThemeName, GradientPreset, Frame, Cell } 
 import { THEMES, GRADIENTS } from '../themes';
 import { parseAnsiToStyledSpans, escapeXml } from '../parser';
 
+// How long the last recorded frame stays on screen before a looping playback
+// wraps back to frame 0. Shared by the animated-SVG path (animation duration
+// padding) and the GIF path (last frame's delay).
+export const FINAL_FRAME_HOLD_MS = 800;
+
 export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions = {}): string {
   const themeName = (options.theme || 'dracula') as ThemeName;
   const theme = THEMES[themeName] || THEMES.dracula;
@@ -311,7 +316,6 @@ export function renderAnimatedGridFrames(frames: Frame[], options: RenderOptions
   const totalDurationMs = Math.max(1, frames[frames.length - 1].timestampMs);
   // Pad the animation loop to give the last frame a non-zero-length window
   // to be visible in before the loop wraps back to frame-0
-  const FINAL_FRAME_HOLD_MS = 800;
   const animDurationMs = totalDurationMs + FINAL_FRAME_HOLD_MS;
 
   let framesBody = '';
