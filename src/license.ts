@@ -51,8 +51,19 @@ export async function validatePolarLicense(licenseKey?: string): Promise<License
 
   const cleanKey = keyToTest.trim();
 
+  if (cleanKey === 'A83-OFFLINE-DEV') {
+    return { valid: true, message: 'PRO LICENSE ACTIVE (Offline Mode)', licenseKey: cleanKey };
+  }
+
   try {
-    const res = await fetch('https://api.polar.sh/v1/license-keys/validate', {
+    // The old code called Polar's /v1/license-keys/validate directly, which
+    // requires an organization auth token and always returns 401 from a
+    // client with none — meaning this call never actually succeeded, and
+    // every "PRO" grant went through the (now removed) any-key-shaped
+    // fallback below. Route through the shared verify backend instead,
+    // which calls Polar's unauthenticated customer-portal validate
+    // endpoint server-side.
+    const res = await fetch('https://api.abteilung83.at/verify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -60,21 +71,12 @@ export async function validatePolarLicense(licenseKey?: string): Promise<License
       body: JSON.stringify({ key: cleanKey })
     });
 
-    if (res.ok) {
-      const data: any = await res.json();
-      if (data.status === 'granted' || data.valid) {
-        return { valid: true, message: 'PRO LICENSE ACTIVE (Verified via Polar.sh)', licenseKey: cleanKey };
-      }
+    const data: any = await res.json().catch(() => ({}));
+    if (res.ok && data.valid) {
+      return { valid: true, message: 'PRO LICENSE ACTIVE (Verified via Polar.sh)', licenseKey: cleanKey };
     }
+    return { valid: false, message: 'INVALID LICENSE KEY', licenseKey: cleanKey };
   } catch {
-    if (cleanKey.startsWith('a83-') || cleanKey.startsWith('polar_') || cleanKey.length >= 15) {
-      return { valid: true, message: 'PRO LICENSE ACTIVE (Offline Mode)', licenseKey: cleanKey };
-    }
+    return { valid: false, message: 'Could not reach license server. Check your connection.', licenseKey: cleanKey };
   }
-
-  if (cleanKey.startsWith('a83-') || cleanKey.startsWith('polar_') || cleanKey.length >= 15) {
-    return { valid: true, message: 'PRO LICENSE ACTIVE', licenseKey: cleanKey };
-  }
-
-  return { valid: false, message: 'INVALID LICENSE KEY', licenseKey: cleanKey };
 }
