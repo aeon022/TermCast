@@ -126,7 +126,6 @@ program
   .option('-o, --output <path>', 'Output filepath', 'terminal-output')
   .option('--title <title>', 'Window title bar text', 'termcast — zsh')
   .option('--animated', 'Play back the real recorded frames as an animated SVG')
-  .option('--prompt <style>', 'Prompt style: zsh, starship, bash, none', 'zsh')
   .option('--format <type>', 'Output format: svg, html, gif, both', 'svg')
   .option('--fps <n>', 'Frames sampled per second while recording', '10')
   .option('--max-duration <seconds>', 'Stop recording after this many seconds', '30')
@@ -152,8 +151,7 @@ program
         theme: options.theme as ThemeName,
         gradient: options.gradient as GradientPreset,
         title: options.title || `zsh — ${cmdString}`,
-        watermark: !licenseCheck.valid,
-        prompt: options.prompt as PromptStyle
+        watermark: !licenseCheck.valid
       };
 
       const format = options.format || 'svg';
@@ -203,7 +201,6 @@ program
   .description('Record a command and launch an instant live web preview in the browser')
   .option('-t, --theme <name>', 'Theme: dracula, tokyonight, nord, catppuccin, monokai', 'dracula')
   .option('-g, --gradient <name>', 'Gradient: default, cyberpunk, sunset, matrix, hyper, neon, midnight', 'cyberpunk')
-  .option('--prompt <style>', 'Prompt style: zsh, starship, bash, none', 'zsh')
   .option('--animated', 'Play back the real recorded frames as an animated SVG')
   .action(async (cmdString, options) => {
     try {
@@ -218,8 +215,7 @@ program
       const renderOpts: RenderOptions = {
         theme: options.theme as ThemeName,
         gradient: options.gradient as GradientPreset,
-        title: `zsh — ${cmdString}`,
-        prompt: options.prompt as PromptStyle
+        title: `zsh — ${cmdString}`
       };
 
       const svg = options.animated

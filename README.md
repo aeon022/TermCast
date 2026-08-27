@@ -39,7 +39,7 @@ termcast demo --animated --gradient cyberpunk --format both
 Render the output of any command (e.g. `ls -la`, `git status`, `npm test`):
 
 ```bash
-termcast render "git status" --animated --prompt starship --theme tokyonight --format both --output git-status
+termcast render "git status" --animated --theme tokyonight --format both --output git-status
 ```
 
 ### 4. Launch Instant Live Preview in Browser
