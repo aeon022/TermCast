@@ -16,7 +16,7 @@ const shellName = path.basename(process.env.SHELL || 'sh');
 const program = new Command();
 
 program
-  .name('termcast')
+  .name('ttyreel')
   .description('Pretty Terminal SVG & GIF Studio CLI for GitHub READMEs and Demos')
   .version('0.1.0');
 
@@ -30,12 +30,12 @@ program
     try {
       if (options.clear) {
         await clearSavedLicense();
-        console.log('[TermCast] Saved license key cleared. Switched to Free Tier.');
+        console.log('[ttyreel] Saved license key cleared. Switched to Free Tier.');
         return;
       }
 
       if (key) {
-        console.log('[TermCast] Validating license key...');
+        console.log('[ttyreel] Validating license key...');
         const result = await saveLicenseKey(key);
         if (result.valid) {
           console.log(`\n✨ ${result.message}`);
@@ -50,7 +50,7 @@ program
       // Check current status
       const activeKey = await getSavedLicenseKey();
       const result = await validatePolarLicense(activeKey);
-      console.log('\n[TermCast] License Status:');
+      console.log('\n[ttyreel] License Status:');
       console.log(`  State : ${result.valid ? 'PRO ACTIVE ✓' : 'FREE TIER'}`);
       console.log(`  Key   : ${activeKey ? maskKey(activeKey) : 'None'}`);
       console.log(`  Info  : ${result.message}`);
@@ -59,17 +59,17 @@ program
       }
     } catch (err: any) {
       process.exitCode = 1;
-      console.error(`[TermCast] License error: ${err.message}`);
+      console.error(`[ttyreel] License error: ${err.message}`);
     }
   });
 
 // Demo Command
 program
   .command('demo')
-  .description('Generate a quick demo SVG showcasing TermCast styling and animation')
+  .description('Generate a quick demo SVG showcasing ttyreel styling and animation')
   .option('-t, --theme <name>', 'Theme: dracula, tokyonight, nord, catppuccin, monokai', 'dracula')
   .option('-g, --gradient <name>', 'Gradient: default, cyberpunk, sunset, matrix, hyper, neon, midnight', 'cyberpunk')
-  .option('-o, --output <path>', 'Output filepath', 'termcast-demo')
+  .option('-o, --output <path>', 'Output filepath', 'ttyreel-demo')
   .option('--animated', 'Enable CSS typing keyframe animation')
   .option('--prompt <style>', 'Prompt style: zsh, starship, bash, none', 'zsh')
   .option('--format <type>', 'Output format: svg, html, both', 'svg')
@@ -77,19 +77,19 @@ program
   .action(async (options) => {
     try {
       const licenseCheck = await validatePolarLicense(options.license);
-      console.log(`[TermCast] License Status: ${licenseCheck.message}`);
+      console.log(`[ttyreel] License Status: ${licenseCheck.message}`);
 
       const sampleFrames: TerminalFrame[] = [
         { text: '\x1b[32m✔\x1b[0m \x1b[1mmy-app\x1b[0m initialized successfully', delayMs: 100 },
         { text: '\x1b[36mℹ\x1b[0m Watching local directory: \x1b[34m~/projects/my-app/docs\x1b[0m', delayMs: 200 },
         { text: '\x1b[33m⚡\x1b[0m Synced \x1b[1m184 notes\x1b[0m in 42ms (0 errors)', delayMs: 300 },
-        { text: '\x1b[32m✔\x1b[0m Output saved to \x1b[35mtermcast-demo.svg\x1b[0m', delayMs: 400 }
+        { text: '\x1b[32m✔\x1b[0m Output saved to \x1b[35mttyreel-demo.svg\x1b[0m', delayMs: 400 }
       ];
 
       const renderOpts: RenderOptions = {
         theme: options.theme as ThemeName,
         gradient: options.gradient as GradientPreset,
-        title: 'termcast — zsh (demo)',
+        title: 'ttyreel — zsh (demo)',
         watermark: !licenseCheck.valid,
         animated: options.animated,
         prompt: options.prompt as PromptStyle
@@ -112,13 +112,13 @@ program
         console.log(`  ✨ Created HTML Embed: ${htmlPath}`);
       }
 
-      console.log('\n[TermCast] Execution finished successfully.\n');
+      console.log('\n[ttyreel] Execution finished successfully.\n');
       if (!licenseCheck.valid) {
         console.log('💡 Support development and remove the watermark: https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1');
       }
     } catch (err: any) {
       process.exitCode = 1;
-      console.error(`[TermCast] Error generating demo: ${err.message}`);
+      console.error(`[ttyreel] Error generating demo: ${err.message}`);
     }
   });
 
@@ -140,8 +140,8 @@ program
   .action(async (cmdString, options) => {
     try {
       const licenseCheck = await validatePolarLicense(options.license);
-      console.log(`[TermCast] License Status: ${licenseCheck.message}`);
-      console.log(`[TermCast] Recording: "${cmdString}"...`);
+      console.log(`[ttyreel] License Status: ${licenseCheck.message}`);
+      console.log(`[ttyreel] Recording: "${cmdString}"...`);
 
       const fps = parseInt(options.fps, 10) || 10;
       const cols = parseInt(options.cols, 10) || 80;
@@ -193,13 +193,13 @@ program
         console.log(`  ✨ Created GIF: ${gifPath}`);
       }
 
-      console.log('\n[TermCast] Recording finished successfully.\n');
+      console.log('\n[ttyreel] Recording finished successfully.\n');
       if (!licenseCheck.valid) {
         console.log('💡 Support development and remove the watermark: https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1');
       }
     } catch (err: any) {
       process.exitCode = 1;
-      console.error(`[TermCast] Error: ${err.message}`);
+      console.error(`[ttyreel] Error: ${err.message}`);
     }
   });
 
@@ -212,7 +212,7 @@ program
   .option('--animated', 'Play back the real recorded frames as an animated SVG')
   .action(async (cmdString, options) => {
     try {
-      console.log(`[TermCast] Recording: "${cmdString}" for live preview...`);
+      console.log(`[ttyreel] Recording: "${cmdString}" for live preview...`);
 
       const cols = process.stdout.columns || 80;
       const rows = process.stdout.rows || 24;
@@ -233,7 +233,7 @@ program
       startPreviewServer(svg, 3333);
     } catch (err: any) {
       process.exitCode = 1;
-      console.error(`[TermCast] Preview Error: ${err.message}`);
+      console.error(`[ttyreel] Preview Error: ${err.message}`);
     }
   });
 

@@ -64,7 +64,7 @@ function startPreviewServer(svg, port = 3333, openBrowser = true) {
     });
     server.on('listening', () => {
         const url = `http://127.0.0.1:${server.address().port}`;
-        console.log(`\n🚀 TermCast Live Preview running at: ${url}`);
+        console.log(`\n🚀 ttyreel Live Preview running at: ${url}`);
         console.log('   (Press Ctrl+C to stop preview server)\n');
         if (openBrowser) {
             const open = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'cmd /c start ""' : 'xdg-open';

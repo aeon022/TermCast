@@ -12,13 +12,13 @@ export interface LicenseValidationResult {
 // aeon022's Polar.sh organization (public: customers need it to validate keys, no secret involved).
 const POLAR_ORG_ID = 'aa792ea4-650e-492e-a955-9b3d564e943e';
 const POLAR_VALIDATE_URL = 'https://api.polar.sh/v1/customer-portal/license-keys/validate';
-// Polar benefit that unlocks this tool: the "TermCast Pro" product (family keys come from it too).
+// Polar benefit that unlocks this tool: the "ttyreel Pro" product (family keys come from it too).
 const ALLOWED_BENEFIT_IDS: string[] = ['0f534979-c9f8-4423-aa4d-6b6583a7e2aa'];
 
 const RECHECK_MS = 24 * 60 * 60 * 1000; // a saved key is re-validated at most once a day
 const OFFLINE_GRACE_MS = 21 * 24 * 60 * 60 * 1000; // ... and keeps working this long without reaching Polar
 
-const CONFIG_DIR = path.join(os.homedir(), '.config', 'termcast');
+const CONFIG_DIR = path.join(os.homedir(), '.config', 'ttyreel');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
 interface SavedConfig {
@@ -72,7 +72,7 @@ async function checkWithPolar(cleanKey: string): Promise<LicenseValidationResult
       if (ALLOWED_BENEFIT_IDS.length === 0 || ALLOWED_BENEFIT_IDS.includes(data.benefit_id)) {
         return { valid: true, message: 'PRO LICENSE ACTIVE (verified via Polar.sh)', licenseKey: cleanKey };
       }
-      return { valid: false, message: 'This license key does not include TermCast Pro.', licenseKey: cleanKey };
+      return { valid: false, message: 'This license key does not include ttyreel Pro.', licenseKey: cleanKey };
     }
     return { valid: false, message: 'INVALID LICENSE KEY', licenseKey: cleanKey };
   } catch {
@@ -87,7 +87,7 @@ export async function validatePolarLicense(licenseKey?: string): Promise<License
   if (!keyToTest || keyToTest.trim() === '') {
     return {
       valid: false,
-      message: 'FREE TIER (Includes "Crafted with TermCast" watermark. Upgrade to Pro to remove).'
+      message: 'FREE TIER (Includes "Crafted with ttyreel" watermark. Upgrade to Pro to remove).'
     };
   }
 

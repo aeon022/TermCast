@@ -5,7 +5,7 @@ Date: 2026-08-27
 
 ## Problem
 
-TermCast's `README.md`/`package.json` describe it as a "Terminal SVG & GIF
+ttyreel's `README.md`/`package.json` describe it as a "Terminal SVG & GIF
 Studio" that records sessions. Neither claim is true today:
 
 - `render`/`serve` run the given command once via `execSync` and produce
@@ -23,7 +23,7 @@ gap as a side effect of the chosen architecture.
 ## Scope
 
 **In scope:** recording a single given command's real-time output
-(`termcast render <cmd>` / `termcast serve <cmd>`) as a timed sequence of
+(`ttyreel render <cmd>` / `ttyreel serve <cmd>`) as a timed sequence of
 terminal-state frames, exporting that as GIF, and upgrading the existing
 `--animated` SVG output to play back real captured frames instead of a
 CSS typing-effect over static text.

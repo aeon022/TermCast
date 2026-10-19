@@ -7,7 +7,7 @@ function renderHtmlEmbed(frames, options = {}) {
     const themeName = (options.theme || 'dracula');
     const theme = themes_1.THEMES[themeName] || themes_1.THEMES.dracula;
     const gradient = options.gradient ? themes_1.GRADIENTS[options.gradient] || themes_1.GRADIENTS.default : theme.gradientBackground;
-    const windowTitle = options.title || 'termcast — bash';
+    const windowTitle = options.title || 'ttyreel — bash';
     const showWatermark = options.watermark !== false;
     const fullRawText = frames.map(f => f.text).join('\n');
     const lines = fullRawText.split(/\r?\n/);
@@ -48,7 +48,7 @@ function renderHtmlEmbed(frames, options = {}) {
       min-height: 100vh;
       box-sizing: border-box;
     }
-    .termcast-card {
+    .ttyreel-card {
       width: 100%;
       max-width: 800px;
       background: ${theme.background};
@@ -57,7 +57,7 @@ function renderHtmlEmbed(frames, options = {}) {
       overflow: hidden;
       border: 1px solid rgba(255,255,255,0.1);
     }
-    .termcast-header {
+    .ttyreel-header {
       background: ${theme.titleBar};
       padding: 12px 16px;
       display: flex;
@@ -65,7 +65,7 @@ function renderHtmlEmbed(frames, options = {}) {
       justify-content: space-between;
       border-bottom: 1px solid rgba(0,0,0,0.2);
     }
-    .termcast-dots {
+    .ttyreel-dots {
       display: flex;
       gap: 8px;
     }
@@ -73,7 +73,7 @@ function renderHtmlEmbed(frames, options = {}) {
     .dot.red { background: #FF5F56; }
     .dot.yellow { background: #FFBD2E; }
     .dot.green { background: #27C93F; }
-    .termcast-title {
+    .ttyreel-title {
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -83,7 +83,7 @@ function renderHtmlEmbed(frames, options = {}) {
       font-size: 13px;
       font-weight: 600;
     }
-    .termcast-copy {
+    .ttyreel-copy {
       background: rgba(255,255,255,0.1);
       color: ${theme.foreground};
       border: none;
@@ -93,8 +93,8 @@ function renderHtmlEmbed(frames, options = {}) {
       cursor: pointer;
       transition: all 0.2s;
     }
-    .termcast-copy:hover { background: rgba(255,255,255,0.25); }
-    .termcast-body {
+    .ttyreel-copy:hover { background: rgba(255,255,255,0.25); }
+    .ttyreel-body {
       padding: 20px;
       font-family: Menlo, Monaco, 'Courier New', monospace;
       font-size: 14px;
@@ -123,26 +123,26 @@ function renderHtmlEmbed(frames, options = {}) {
 </head>
 <body>
 
-<div class="termcast-card">
-  <div class="termcast-header">
-    <div class="termcast-dots">
+<div class="ttyreel-card">
+  <div class="ttyreel-header">
+    <div class="ttyreel-dots">
       <div class="dot red"></div>
       <div class="dot yellow"></div>
       <div class="dot green"></div>
     </div>
-    <div class="termcast-title">${(0, parser_1.escapeXml)(windowTitle)}</div>
-    <button class="termcast-copy" onclick="copyCode()">Copy</button>
+    <div class="ttyreel-title">${(0, parser_1.escapeXml)(windowTitle)}</div>
+    <button class="ttyreel-copy" onclick="copyCode()">Copy</button>
   </div>
-  <div class="termcast-body">
+  <div class="ttyreel-body">
 ${linesHtml}  </div>
-  ${showWatermark ? `<div class="footer">Crafted with <a href="https://github.com/aeon022/TermCast" target="_blank">TermCast</a></div>` : ''}
+  ${showWatermark ? `<div class="footer">Crafted with <a href="https://github.com/aeon022/ttyreel" target="_blank">ttyreel</a></div>` : ''}
 </div>
 
 <script>
   function copyCode() {
     const raw = ${rawForScript};
     navigator.clipboard.writeText(raw).then(() => {
-      const btn = document.querySelector('.termcast-copy');
+      const btn = document.querySelector('.ttyreel-copy');
       btn.innerText = '✓ Copied!';
       setTimeout(() => btn.innerText = 'Copy', 2000);
     });

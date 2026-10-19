@@ -1,6 +1,6 @@
-# 🎬 TermCast — Comprehensive Tutorial & How-To Guide
+# 🎬 ttyreel — Comprehensive Tutorial & How-To Guide
 
-Welcome to the **TermCast** tutorial! This guide covers real-world workflows, command-line recipes, and customization options for generating beautiful terminal vector SVGs and interactive HTML embeds.
+Welcome to the **ttyreel** tutorial! This guide covers real-world workflows, command-line recipes, and customization options for generating beautiful terminal vector SVGs and interactive HTML embeds.
 
 ---
 
@@ -18,16 +18,16 @@ Welcome to the **TermCast** tutorial! This guide covers real-world workflows, co
 
 ## 1. Quick Installation
 
-Install TermCast globally via npm:
+Install ttyreel globally via npm:
 
 ```bash
-git clone https://github.com/aeon022/TermCast.git && cd TermCast && npm install --omit=dev && npm install -g .
+git clone https://github.com/aeon022/ttyreel.git && cd ttyreel && npm install --omit=dev && npm install -g .
 ```
 
 Or run any command without installing via `npx`:
 
 ```bash
-npx github:aeon022/TermCast demo
+npx github:aeon022/ttyreel demo
 ```
 
 ---
@@ -37,13 +37,13 @@ npx github:aeon022/TermCast demo
 To create an animated vector SVG showcasing a demo session with a blinking cursor:
 
 ```bash
-termcast demo --animated --gradient cyberpunk --format svg --output demo-showcase.svg
+ttyreel demo --animated --gradient cyberpunk --format svg --output demo-showcase.svg
 ```
 
 This generates `demo-showcase.svg` which can be directly embedded into your GitHub `README.md`:
 
 ```markdown
-![TermCast Demo](./demo-showcase.svg)
+![ttyreel Demo](./demo-showcase.svg)
 ```
 
 ---
@@ -53,7 +53,7 @@ This generates `demo-showcase.svg` which can be directly embedded into your GitH
 You can render the output of any shell command (such as `git status`, `ls -la`, or `npm test`):
 
 ```bash
-termcast render "git status" --animated --prompt starship --theme tokyonight --output git-status
+ttyreel render "git status" --animated --prompt starship --theme tokyonight --output git-status
 ```
 
 This captures the output, formats ANSI color codes, and exports `git-status.svg`.
@@ -65,7 +65,7 @@ This captures the output, formats ANSI color codes, and exports `git-status.svg`
 To generate a standalone HTML snippet featuring a **Copy Code** button, line numbers, and glassmorphism styling for your website or documentation site:
 
 ```bash
-termcast render "npm test" --format html --output npm-test
+ttyreel render "npm test" --format html --output npm-test
 ```
 
 This generates `npm-test.html` which you can embed directly into your documentation site or web page.
@@ -74,10 +74,10 @@ This generates `npm-test.html` which you can embed directly into your documentat
 
 ## Workflow 4: Live Web Preview Server
 
-Want to tweak options and see the rendered terminal graphic live in your browser? Use `termcast serve`:
+Want to tweak options and see the rendered terminal graphic live in your browser? Use `ttyreel serve`:
 
 ```bash
-termcast serve "ls -la" --animated --theme dracula
+ttyreel serve "ls -la" --animated --theme dracula
 ```
 
 This spins up a local web server at `http://localhost:3333` and automatically opens your default browser with live SVG preview!
@@ -107,7 +107,7 @@ This spins up a local web server at `http://localhost:3333` and automatically op
 
 ### Recipe Example:
 ```bash
-termcast render "npm run build" \
+ttyreel render "npm run build" \
   --theme catppuccin \
   --gradient hyper \
   --prompt starship \
@@ -123,7 +123,7 @@ termcast render "npm run build" \
 Unlock watermark removal and custom styling by activating your Polar license key:
 
 ```bash
-termcast render "git status" --license polar_cl_YOUR_POLAR_KEY
+ttyreel render "git status" --license polar_cl_YOUR_POLAR_KEY
 ```
 
 👉 **[Get Pro License on Polar](https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1)**

@@ -32,7 +32,7 @@ export function startPreviewServer(svg: string, port: number = 3333, openBrowser
 
   server.on('listening', () => {
     const url = `http://127.0.0.1:${(server.address() as any).port}`;
-    console.log(`\n🚀 TermCast Live Preview running at: ${url}`);
+    console.log(`\n🚀 ttyreel Live Preview running at: ${url}`);
     console.log('   (Press Ctrl+C to stop preview server)\n');
 
     if (openBrowser) {

@@ -6,7 +6,7 @@ test('the html embed has one numbered line per output line, no phantom last line
   const html = renderHtmlEmbed([{ text: 'one\n<b>two</b> &amp;\n', delayMs: 0 }], { watermark: false });
   assert.equal((html.match(/class="ln"/g) || []).length, 2);
   assert.match(html, /&lt;b&gt;two&lt;\/b&gt;/);
-  assert.match(html, /class="termcast-title"/);
+  assert.match(html, /class="ttyreel-title"/);
 });
 
 test('command output cannot break out of the inline script (</script> injection)', () => {

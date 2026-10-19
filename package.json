@@ -1,10 +1,10 @@
 {
-  "name": "termcast",
+  "name": "ttyreel",
   "version": "0.1.0",
   "description": "Pretty Terminal SVG & GIF Studio CLI for GitHub READMEs and Demos by abteilung83",
   "main": "dist/index.js",
   "bin": {
-    "termcast": "dist/index.js"
+    "ttyreel": "dist/index.js"
   },
   "files": [
     "dist/**/*",

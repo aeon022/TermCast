@@ -21,7 +21,7 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
   const themeName = (options.theme || 'dracula') as ThemeName;
   const theme = THEMES[themeName] || THEMES.dracula;
   const gradientCss = options.gradient ? (GRADIENTS[options.gradient] || GRADIENTS.default) : theme.gradientBackground;
-  const windowTitle = options.title || 'termcast — zsh';
+  const windowTitle = options.title || 'ttyreel — zsh';
   const showWatermark = options.watermark !== false;
   const isAnimated = options.animated === true;
 
@@ -119,7 +119,7 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
   const watermarkSvg = showWatermark ? `
     <g transform="translate(${width - 210}, ${height - 15})">
       <text font-family="-apple-system, system-ui, sans-serif" font-size="11px" fill="#888888">
-        Crafted with <tspan fill="#0066FF" font-weight="bold">TermCast</tspan>
+        Crafted with <tspan fill="#0066FF" font-weight="bold">ttyreel</tspan>
       </text>
     </g>
   ` : '';
@@ -239,7 +239,7 @@ function buildChrome(
   const themeName = (options.theme || 'dracula') as ThemeName;
   const theme = THEMES[themeName] || THEMES.dracula;
   const gradientCss = options.gradient ? (GRADIENTS[options.gradient] || GRADIENTS.default) : theme.gradientBackground;
-  const windowTitle = options.title || 'termcast — zsh';
+  const windowTitle = options.title || 'ttyreel — zsh';
   const { width, height, termX, termY, termW, termH, titleBarHeight } = geom;
 
   const stops = gradientStops(gradientCss, theme.colors.blue, theme.colors.magenta);
@@ -247,7 +247,7 @@ function buildChrome(
   const watermarkSvg = showWatermark ? `
     <g transform="translate(${width - 210}, ${height - 15})">
       <text font-family="-apple-system, system-ui, sans-serif" font-size="11px" fill="#888888">
-        Crafted with <tspan fill="#0066FF" font-weight="bold">TermCast</tspan>
+        Crafted with <tspan fill="#0066FF" font-weight="bold">ttyreel</tspan>
       </text>
     </g>
   ` : '';

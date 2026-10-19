@@ -10,7 +10,7 @@ const html_1 = require("./html");
     const html = (0, html_1.renderHtmlEmbed)([{ text: 'one\n<b>two</b> &amp;\n', delayMs: 0 }], { watermark: false });
     strict_1.default.equal((html.match(/class="ln"/g) || []).length, 2);
     strict_1.default.match(html, /&lt;b&gt;two&lt;\/b&gt;/);
-    strict_1.default.match(html, /class="termcast-title"/);
+    strict_1.default.match(html, /class="ttyreel-title"/);
 });
 (0, node_test_1.test)('command output cannot break out of the inline script (</script> injection)', () => {
     const evil = 'x</script><img src=x onerror=alert(1)>\u2028y';

@@ -33,7 +33,7 @@ test('a valid answer unlocks Pro and keys are masked', async () => {
 
 test('a saved key validated today needs no network, an offline check keeps a recent key alive', async () => {
   const fs2 = require('fs'), os2 = require('os'), path2 = require('path');
-  const dir = path2.join(os2.homedir(), '.config', 'termcast'); fs2.mkdirSync(dir, { recursive: true });
+  const dir = path2.join(os2.homedir(), '.config', 'ttyreel'); fs2.mkdirSync(dir, { recursive: true });
   const write = (iso) => fs2.writeFileSync(path2.join(dir, 'config.json'), JSON.stringify({ licenseKey: 'k-1234567890', validatedAt: iso }));
   reply = { status: 500, ok: false, body: {} };
   write(new Date().toISOString());

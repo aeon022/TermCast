@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace TermCast's fake "record" (two static frames from `execSync`) with real PTY-based capture of a command's live output, and add the GIF export the product name and docs already promise but the code never implemented.
+**Goal:** Replace ttyreel's fake "record" (two static frames from `execSync`) with real PTY-based capture of a command's live output, and add the GIF export the product name and docs already promise but the code never implemented.
 
 **Architecture:** `node-pty` spawns the given command in a real pseudoterminal; its output feeds an `@xterm/headless` `Terminal` instance (correct ANSI/VT parsing — 256-color, truecolor, cursor movement — for free, fixing the audit's parser-gap finding as a side effect). The terminal's cell grid is sampled at a fixed rate into a `Frame[]` timeline. SVG rendering reads resolved per-cell colors directly from the grid; GIF export rasterizes each frame's SVG via `@resvg/resvg-js` and assembles the PNG sequence via `gifenc`.
 
@@ -260,7 +260,7 @@ import assert from 'node:assert/strict';
 import { recordCommand } from './recorder';
 
 test('recordCommand captures real output from a spawned command', async () => {
-  const result = await recordCommand('echo hello-termcast', {
+  const result = await recordCommand('echo hello-ttyreel', {
     cols: 40,
     rows: 5,
     fps: 20,
@@ -270,8 +270,8 @@ test('recordCommand captures real output from a spawned command', async () => {
   assert.ok(result.frames.length >= 1, 'expected at least one frame');
   const lastFrame = result.frames[result.frames.length - 1];
   const lineText = lastFrame.grid.map(row => row.map(c => c.char).join('')).join('\n');
-  assert.match(lineText, /hello-termcast/, 'expected the echoed text to appear in the captured grid');
-  assert.match(result.rawText, /hello-termcast/, 'expected the raw text accumulator to contain the echoed text');
+  assert.match(lineText, /hello-ttyreel/, 'expected the echoed text to appear in the captured grid');
+  assert.match(result.rawText, /hello-ttyreel/, 'expected the raw text accumulator to contain the echoed text');
 });
 
 test('recordCommand always captures a t=0 frame even for a fast command', async () => {
@@ -382,7 +382,7 @@ export function recordCommand(cmdString: string, options: RecordOptions = {}): P
 
     const maxDurationTimer = setTimeout(() => {
       if (finished) return;
-      console.warn(`[TermCast] Recording stopped at ${maxDurationMs / 1000}s limit — the command may still have been running.`);
+      console.warn(`[ttyreel] Recording stopped at ${maxDurationMs / 1000}s limit — the command may still have been running.`);
       finish();
     }, maxDurationMs);
 
@@ -575,7 +575,7 @@ function buildChrome(
   const themeName = (options.theme || 'dracula') as ThemeName;
   const theme = THEMES[themeName] || THEMES.dracula;
   const gradientCss = options.gradient ? (GRADIENTS[options.gradient] || GRADIENTS.default) : theme.gradientBackground;
-  const windowTitle = options.title || 'termcast — zsh';
+  const windowTitle = options.title || 'ttyreel — zsh';
   const { width, height, termX, termY, termW, termH, titleBarHeight } = geom;
 
   const gradMatch = gradientCss.match(/linear-gradient\([^,]+,\s*([^0-9]+)[0-9]+%\s*,\s*([^0-9]+)[0-9]+%\)/);
@@ -585,7 +585,7 @@ function buildChrome(
   const watermarkSvg = showWatermark ? `
     <g transform="translate(${width - 210}, ${height - 15})">
       <text font-family="-apple-system, system-ui, sans-serif" font-size="11px" fill="#888888">
-        Crafted with <tspan fill="#0066FF" font-weight="bold">TermCast</tspan>
+        Crafted with <tspan fill="#0066FF" font-weight="bold">ttyreel</tspan>
       </text>
     </g>
   ` : '';
@@ -831,7 +831,7 @@ export function startPreviewServer(svg: string, port: number = 3333): void {
 
   server.listen(port, () => {
     const url = `http://localhost:${port}`;
-    console.log(`\n🚀 TermCast Live Preview running at: ${url}`);
+    console.log(`\n🚀 ttyreel Live Preview running at: ${url}`);
     console.log('   (Press Ctrl+C to stop preview server)\n');
 
     const startCmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
@@ -895,7 +895,7 @@ program
   .option('-t, --theme <name>', 'Theme: dracula, tokyonight, nord, catppuccin, monokai', 'dracula')
   .option('-g, --gradient <name>', 'Gradient: default, cyberpunk, sunset, matrix, hyper, neon, midnight', 'cyberpunk')
   .option('-o, --output <path>', 'Output filepath', 'terminal-output')
-  .option('--title <title>', 'Window title bar text', 'termcast — zsh')
+  .option('--title <title>', 'Window title bar text', 'ttyreel — zsh')
   .option('--animated', 'Play back the real recorded frames as an animated SVG')
   .option('--prompt <style>', 'Prompt style: zsh, starship, bash, none', 'zsh')
   .option('--format <type>', 'Output format: svg, html, gif, both', 'svg')
@@ -907,8 +907,8 @@ program
   .action(async (cmdString, options) => {
     try {
       const licenseCheck = await validatePolarLicense(options.license);
-      console.log(`[TermCast] License Status: ${licenseCheck.message}`);
-      console.log(`[TermCast] Recording: "${cmdString}"...`);
+      console.log(`[ttyreel] License Status: ${licenseCheck.message}`);
+      console.log(`[ttyreel] Recording: "${cmdString}"...`);
 
       const fps = parseInt(options.fps, 10) || 10;
       const cols = parseInt(options.cols, 10) || 80;
@@ -959,12 +959,12 @@ program
         console.log(`  ✨ Created GIF: ${gifPath}`);
       }
 
-      console.log('\n[TermCast] Recording finished successfully.\n');
+      console.log('\n[ttyreel] Recording finished successfully.\n');
       if (!licenseCheck.valid) {
         console.log('💡 Remove watermark & unlock custom gradients: https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1');
       }
     } catch (err: any) {
-      console.error(`[TermCast] Error: ${err.message}`);
+      console.error(`[ttyreel] Error: ${err.message}`);
     }
   });
 ```
@@ -984,7 +984,7 @@ program
   .option('--animated', 'Play back the real recorded frames as an animated SVG')
   .action(async (cmdString, options) => {
     try {
-      console.log(`[TermCast] Recording: "${cmdString}" for live preview...`);
+      console.log(`[ttyreel] Recording: "${cmdString}" for live preview...`);
 
       const cols = process.stdout.columns || 80;
       const rows = process.stdout.rows || 24;
@@ -1005,7 +1005,7 @@ program
 
       startPreviewServer(svg, 3333);
     } catch (err: any) {
-      console.error(`[TermCast] Preview Error: ${err.message}`);
+      console.error(`[ttyreel] Preview Error: ${err.message}`);
     }
   });
 ```
@@ -1025,12 +1025,12 @@ Expected: all tests from Tasks 1-4 still pass (this task has no new automated te
 Run each of these against the built CLI and confirm no crash and a real, non-trivial output file is produced (not just the two old static lines):
 
 ```bash
-node dist/index.js render "echo hello world" --format svg -o /tmp/termcast-smoke
-node dist/index.js render "echo hello world" --format gif -o /tmp/termcast-smoke --fps 5
-node dist/index.js render "echo hello world" --format svg --animated -o /tmp/termcast-smoke-anim
+node dist/index.js render "echo hello world" --format svg -o /tmp/ttyreel-smoke
+node dist/index.js render "echo hello world" --format gif -o /tmp/ttyreel-smoke --fps 5
+node dist/index.js render "echo hello world" --format svg --animated -o /tmp/ttyreel-smoke-anim
 ```
 
-Expected: `/tmp/termcast-smoke.svg` and `/tmp/termcast-smoke.gif` exist and are non-trivially sized (the GIF should open in an image viewer as a valid, if simple, animated GIF); `/tmp/termcast-smoke-anim.svg` contains multiple `@keyframes frame-N` blocks. Report the actual file sizes and confirm visually if possible — if you cannot visually confirm (headless environment), say so explicitly rather than claiming full verification.
+Expected: `/tmp/ttyreel-smoke.svg` and `/tmp/ttyreel-smoke.gif` exist and are non-trivially sized (the GIF should open in an image viewer as a valid, if simple, animated GIF); `/tmp/ttyreel-smoke-anim.svg` contains multiple `@keyframes frame-N` blocks. Report the actual file sizes and confirm visually if possible — if you cannot visually confirm (headless environment), say so explicitly rather than claiming full verification.
 
 - [ ] **Step 7: Commit**
 

@@ -106,7 +106,7 @@ export function recordCommand(cmdString: string, options: RecordOptions = {}): P
 
     const maxDurationTimer = setTimeout(() => {
       if (finished) return;
-      console.warn(`[TermCast] Recording stopped at ${maxDurationMs / 1000}s limit — the command may still have been running.`);
+      console.warn(`[ttyreel] Recording stopped at ${maxDurationMs / 1000}s limit — the command may still have been running.`);
       finish();
     }, maxDurationMs);
 
