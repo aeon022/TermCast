@@ -97,3 +97,24 @@ export const THEMES: Record<ThemeName, ThemeColors> = {
     }
   }
 };
+
+/**
+ * Turns a CSS linear-gradient (e.g. "linear-gradient(135deg, #ff007f 0%, #00f0ff 100%)") into SVG <stop>
+ * elements. Any number of stops is supported; stops without a percentage are spread evenly.
+ * Falls back to the two given colours when the string has fewer than two colours.
+ */
+export function gradientStops(css: string, fallbackA: string, fallbackB: string): string {
+  const stops: { color: string; offset?: number }[] = [];
+  const re = /(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\))\s*(\d+(?:\.\d+)?)?%?/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(css)) !== null) {
+    stops.push({ color: m[1], offset: m[2] !== undefined ? parseFloat(m[2]) : undefined });
+  }
+  const list = stops.length >= 2 ? stops : [{ color: fallbackA }, { color: fallbackB }] as { color: string; offset?: number }[];
+  return list
+    .map((st, i) => {
+      const offset = st.offset !== undefined ? st.offset : (i / (list.length - 1)) * 100;
+      return `      <stop offset="${offset}%" stop-color="${st.color}"/>`;
+    })
+    .join('\n');
+}

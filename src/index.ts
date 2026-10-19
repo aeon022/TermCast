@@ -4,11 +4,14 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { renderSvgFrame, renderGridFrame, renderAnimatedGridFrames } from './renderer/svg';
 import { renderHtmlEmbed } from './renderer/html';
+import { cropBlankRows } from './crop';
 import { startPreviewServer } from './server';
 import { validatePolarLicense, saveLicenseKey, clearSavedLicense, getSavedLicenseKey, maskKey } from './license';
 import { recordCommand } from './recorder';
 import { encodeGif } from './gif';
 import { RenderOptions, TerminalFrame, ThemeName, GradientPreset, PromptStyle } from './types';
+
+const shellName = path.basename(process.env.SHELL || 'sh');
 
 const program = new Command();
 
@@ -77,8 +80,8 @@ program
       console.log(`[TermCast] License Status: ${licenseCheck.message}`);
 
       const sampleFrames: TerminalFrame[] = [
-        { text: '\x1b[32m✔\x1b[0m \x1b[1mJoplinBridge\x1b[0m initialized successfully', delayMs: 100 },
-        { text: '\x1b[36mℹ\x1b[0m Watching local directory: \x1b[34m/Users/gweiher/Projects/docs\x1b[0m', delayMs: 200 },
+        { text: '\x1b[32m✔\x1b[0m \x1b[1mmy-app\x1b[0m initialized successfully', delayMs: 100 },
+        { text: '\x1b[36mℹ\x1b[0m Watching local directory: \x1b[34m~/projects/my-app/docs\x1b[0m', delayMs: 200 },
         { text: '\x1b[33m⚡\x1b[0m Synced \x1b[1m184 notes\x1b[0m in 42ms (0 errors)', delayMs: 300 },
         { text: '\x1b[32m✔\x1b[0m Output saved to \x1b[35mtermcast-demo.svg\x1b[0m', delayMs: 400 }
       ];
@@ -126,7 +129,7 @@ program
   .option('-t, --theme <name>', 'Theme: dracula, tokyonight, nord, catppuccin, monokai', 'dracula')
   .option('-g, --gradient <name>', 'Gradient: default, cyberpunk, sunset, matrix, hyper, neon, midnight', 'cyberpunk')
   .option('-o, --output <path>', 'Output filepath', 'terminal-output')
-  .option('--title <title>', 'Window title bar text', 'termcast — zsh')
+  .option('--title <title>', 'Window title bar text (default: the shell and the command)')
   .option('--animated', 'Play back the real recorded frames as an animated SVG')
   .option('--format <type>', 'Output format: svg, html, gif, both', 'svg')
   .option('--fps <n>', 'Frames sampled per second while recording', '10')
@@ -145,14 +148,16 @@ program
       const rows = parseInt(options.rows, 10) || 24;
       const maxDurationMs = (parseInt(options.maxDuration, 10) || 30) * 1000;
 
-      const { frames, rawText } = await recordCommand(cmdString, {
+      const recorded = await recordCommand(cmdString, {
         cols, rows, fps, maxDurationMs, theme: options.theme as ThemeName
       });
+      const { rawText } = recorded;
+      const frames = cropBlankRows(recorded.frames);
 
       const renderOpts: RenderOptions = {
         theme: options.theme as ThemeName,
         gradient: options.gradient as GradientPreset,
-        title: options.title || `zsh — ${cmdString}`,
+        title: options.title || `${shellName} — ${cmdString}`,
         watermark: !licenseCheck.valid
       };
 
@@ -211,14 +216,14 @@ program
 
       const cols = process.stdout.columns || 80;
       const rows = process.stdout.rows || 24;
-      const { frames } = await recordCommand(cmdString, {
+      const frames = cropBlankRows((await recordCommand(cmdString, {
         cols, rows, fps: 10, maxDurationMs: 30000, theme: options.theme as ThemeName
-      });
+      })).frames);
 
       const renderOpts: RenderOptions = {
         theme: options.theme as ThemeName,
         gradient: options.gradient as GradientPreset,
-        title: `zsh — ${cmdString}`
+        title: `${shellName} — ${cmdString}`
       };
 
       const svg = options.animated

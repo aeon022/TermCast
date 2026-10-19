@@ -98,3 +98,12 @@ test('renderAnimatedGridFrames: the last frame is actually visible before the lo
   // back to invisible so frame-0 can take over cleanly.
   assert.equal(sampledOpacity(lastFrameStops, durationMs, 0), 0, 'last frame must reset to invisible at the start of the next loop');
 });
+
+test('--gradient really changes the background (hex colours contain digits: this used to fall back to the theme colours)', () => {
+  const sunset = renderGridFrame(makeFrame('x'), { watermark: false, gradient: 'sunset' });
+  const neon = renderGridFrame(makeFrame('x'), { watermark: false, gradient: 'neon' });
+  assert.match(sunset, /stop-color="#ff512f"/);
+  assert.match(sunset, /stop-color="#dd2476"/);
+  assert.match(neon, /stop-color="#00F260"/);
+  assert.notEqual(sunset, neon);
+});

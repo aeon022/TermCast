@@ -6,12 +6,17 @@
 
 **TermCast** is a CLI tool engineered by **abteilung83**. It captures terminal outputs or shell commands, applies modern developer aesthetics (macOS glassmorphism window frame with traffic-light buttons, vibrant gradient backgrounds, syntax themes), and exports crisp, scalable vector SVGs and interactive HTML embeds for GitHub READMEs, ProductHunt launches, and X/Twitter demos.
 
+![TermCast demo](docs/demo.svg)
+
+*This image was made with `termcast render`.*
+
 ---
 
 ## 🔥 Ultra-Cool Features
 
 - ⌨️ **Pure CSS Typing Animation (`--animated`)**: Generates SVGs where text types out line-by-line with a blinking cursor without any JavaScript!
-- 🌈 **7 Gradient Canvas Presets (`-g cyberpunk / sunset / matrix / hyper / neon / midnight`)**: Instant vibrant gradient backgrounds.
+- 🌈 **7 Gradient Canvas Presets (`-g default / cyberpunk / sunset / matrix / hyper / neon / midnight`)**: Instant vibrant gradient backgrounds.
+- ✂️ **Fits the content**: the window is cropped to the lines your command printed, not drawn as a fixed 24-row terminal.
 - 💡 **Interactive HTML Embeds (`--format html`)**: Standalone HTML component with a **Copy Code** button, line numbers, and hover effects.
 - ⚡ **Instant Live Preview Web Server (`termcast serve`)**: Launches a local web server to preview your rendered terminal graphics in real-time in your browser!
 - 🤖 **ZSH & Starship Prompt Generators (`demo --prompt zsh / starship`)**: Renders ZSH or Starship shell badges (`main 🌿`, `📁 my-app`).
@@ -49,6 +54,8 @@ Preview any command output live in your default browser:
 ```bash
 termcast serve "npm test"
 ```
+
+The preview is served on `127.0.0.1` only (command output can contain secrets); if port 3333 is taken the next free port is used.
 
 ---
 

@@ -1,5 +1,5 @@
 import { RenderOptions, TerminalFrame, ThemeName, GradientPreset, Frame, Cell } from '../types';
-import { THEMES, GRADIENTS } from '../themes';
+import { THEMES, GRADIENTS, gradientStops } from '../themes';
 import { parseAnsiToStyledSpans, escapeXml } from '../parser';
 
 // How long the last recorded frame stays on screen before a looping playback
@@ -114,16 +114,13 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
     </g>
   ` : '';
 
-  const gradMatch = gradientCss.match(/linear-gradient\([^,]+,\s*([^0-9]+)[0-9]+%\s*,\s*([^0-9]+)[0-9]+%\)/);
-  const stop1 = gradMatch ? gradMatch[1].trim() : theme.colors.blue;
-  const stop2 = gradMatch ? gradMatch[2].trim() : theme.colors.magenta;
+  const stops = gradientStops(gradientCss, theme.colors.blue, theme.colors.magenta);
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="${stop1}"/>
-      <stop offset="100%" stop-color="${stop2}"/>
+${stops}
     </linearGradient>
 
     <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
@@ -235,9 +232,7 @@ function buildChrome(
   const windowTitle = options.title || 'termcast — zsh';
   const { width, height, termX, termY, termW, termH, titleBarHeight } = geom;
 
-  const gradMatch = gradientCss.match(/linear-gradient\([^,]+,\s*([^0-9]+)[0-9]+%\s*,\s*([^0-9]+)[0-9]+%\)/);
-  const stop1 = gradMatch ? gradMatch[1].trim() : theme.colors.blue;
-  const stop2 = gradMatch ? gradMatch[2].trim() : theme.colors.magenta;
+  const stops = gradientStops(gradientCss, theme.colors.blue, theme.colors.magenta);
 
   const watermarkSvg = showWatermark ? `
     <g transform="translate(${width - 210}, ${height - 15})">
@@ -251,8 +246,7 @@ function buildChrome(
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="${stop1}"/>
-      <stop offset="100%" stop-color="${stop2}"/>
+${stops}
     </linearGradient>
     <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
       <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.45"/>
