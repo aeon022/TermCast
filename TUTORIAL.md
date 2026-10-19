@@ -21,7 +21,7 @@ Welcome to the **TermCast** tutorial! This guide covers real-world workflows, co
 Install TermCast globally via npm:
 
 ```bash
-npm install -g github:aeon022/TermCast
+git clone https://github.com/aeon022/TermCast.git && cd TermCast && npm install --omit=dev && npm install -g .
 ```
 
 Or run any command without installing via `npx`:

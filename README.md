@@ -26,10 +26,19 @@
 ## 🚀 Quickstart & Tutorial
 
 ### 1. Installation
-Install straight from GitHub (Node 18+; the package builds itself on install):
+Needs Node 18+. Try it without installing:
 
 ```bash
-npm install -g github:aeon022/TermCast
+npx github:aeon022/TermCast demo
+```
+
+Install it (keep the cloned folder: the global command links to it):
+
+```bash
+git clone https://github.com/aeon022/TermCast.git
+cd TermCast
+npm install --omit=dev
+npm install -g .
 ```
 
 > **Do not run `npm install -g termcast`:** that name on npm belongs to a different project ("Raycast for the terminal"), not to this tool.
