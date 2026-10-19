@@ -1,6 +1,6 @@
 {
   "name": "ttyreel",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Turn terminal output into polished SVG, GIF, PNG and HTML: record a command, type and script demos, import asciinema casts. Masks secrets automatically.",
   "keywords": [
     "terminal",
@@ -41,6 +41,8 @@
     "!dist/**/*.test.js",
     "!dist/**/*.test.d.ts",
     "README.md",
+    "TUTORIAL.md",
+    "TESTEN.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "action.yml"

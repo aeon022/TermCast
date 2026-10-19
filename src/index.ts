@@ -23,7 +23,7 @@ const program = new Command();
 program
   .name('ttyreel')
   .description('Turn terminal output into polished SVG, GIF, PNG and HTML: recorded, typed, scripted or imported from asciinema')
-  .version('0.2.1');
+  .version('0.2.2');
 
 const fail = (err: any, what = 'Error') => {
   process.exitCode = 1;
