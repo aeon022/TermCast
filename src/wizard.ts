@@ -71,7 +71,7 @@ export async function wizard(): Promise<void> {
         run(args);
         if (n !== 's') console.error(t('Done. Open the file from the folder you are in now.', 'Fertig. Die Datei liegt in dem Ordner, in dem du gerade bist.'));
       }
-      if (!(await yes(t('Do something else?', 'Noch etwas machen?'), 'n'))) return;
+      if (!(await yes(t('Do something else?', 'Noch etwas machen?'), 'n'))) return void console.error(t('Bye! Run `ttyreel wizard` any time.', 'Tschüss! `ttyreel wizard` startet den Assistenten jederzeit wieder.'));
     }
   } catch (e: any) {
     if (e.message !== 'end') throw e;
