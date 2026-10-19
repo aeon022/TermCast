@@ -12,7 +12,6 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepare": "tsc",
     "test": "tsc && node --test dist/*.test.js dist/renderer/*.test.js test/license.test.js",
     "watch": "tsc -w",
     "start": "ts-node src/index.ts"
