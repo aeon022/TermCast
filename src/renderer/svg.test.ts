@@ -107,3 +107,16 @@ test('--gradient really changes the background (hex colours contain digits: this
   assert.match(neon, /stop-color="#00F260"/);
   assert.notEqual(sunset, neon);
 });
+
+import { fitTitle } from './svg';
+
+test('long window titles are shortened so they stay clear of the traffic lights', () => {
+  assert.equal(fitTitle('zsh — ls', 700), 'zsh — ls');
+  const long = 'zsh — ' + 'x'.repeat(200);
+  const fitted = fitTitle(long, 700);
+  assert.ok(fitted.length <= Math.floor((700 - 220) / 7), fitted.length.toString());
+  assert.ok(fitted.endsWith('…'));
+  assert.equal(fitTitle('a\nb\n  c', 700), 'a b c');
+  const svg = renderGridFrame(makeFrame('x'), { watermark: false, title: long });
+  assert.ok(!svg.includes('x'.repeat(100)), 'the full title must not be in the SVG');
+});

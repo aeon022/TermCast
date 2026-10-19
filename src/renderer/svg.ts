@@ -5,6 +5,16 @@ import { parseAnsiToStyledSpans, escapeXml } from '../parser';
 // How long the last recorded frame stays on screen before a looping playback
 // wraps back to frame 0. Shared by the animated-SVG path (animation duration
 // padding) and the GIF path (last frame's delay).
+/**
+ * Shortens a window title so it stays between the traffic lights (left) and the right edge: roughly
+ * 7px per character at the title font size, with 110px reserved on each side. Newlines become spaces.
+ */
+export function fitTitle(title: string, windowWidth: number): string {
+  const flat = title.replace(/\s+/g, ' ').trim();
+  const max = Math.max(8, Math.floor((windowWidth - 220) / 7));
+  return flat.length <= max ? flat : flat.slice(0, max - 1).trimEnd() + '…';
+}
+
 export const FINAL_FRAME_HOLD_MS = 800;
 
 export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions = {}): string {
@@ -141,7 +151,7 @@ ${stops}
     <circle cx="${termX + 38}" cy="${termY + 18}" r="6" fill="#FFBD2E"/>
     <circle cx="${termX + 58}" cy="${termY + 18}" r="6" fill="#27C93F"/>
 
-    <text x="${termX + termW / 2}" y="${termY + 22}" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="12px" font-weight="600" fill="${theme.foreground}" opacity="0.75">${escapeXml(windowTitle)}</text>
+    <text x="${termX + termW / 2}" y="${termY + 22}" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="12px" font-weight="600" fill="${theme.foreground}" opacity="0.75">${escapeXml(fitTitle(windowTitle, termW))}</text>
   </g>
 
   <g xml:space="preserve">
@@ -260,7 +270,7 @@ ${stops}
     <circle cx="${termX + 18}" cy="${termY + 18}" r="6" fill="#FF5F56"/>
     <circle cx="${termX + 38}" cy="${termY + 18}" r="6" fill="#FFBD2E"/>
     <circle cx="${termX + 58}" cy="${termY + 18}" r="6" fill="#27C93F"/>
-    <text x="${termX + termW / 2}" y="${termY + 22}" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="12px" font-weight="600" fill="${theme.foreground}" opacity="0.75">${escapeXml(windowTitle)}</text>
+    <text x="${termX + termW / 2}" y="${termY + 22}" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="12px" font-weight="600" fill="${theme.foreground}" opacity="0.75">${escapeXml(fitTitle(windowTitle, termW))}</text>
   </g>
   <g xml:space="preserve">
 ${bodyContent}  </g>

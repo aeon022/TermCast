@@ -11,6 +11,7 @@ export function renderHtmlEmbed(frames: TerminalFrame[], options: RenderOptions 
 
   const fullRawText = frames.map(f => f.text).join('\n');
   const lines = fullRawText.split(/\r?\n/);
+  while (lines.length > 1 && lines[lines.length - 1].trim() === '') lines.pop(); // the final newline is not an extra line
 
   let linesHtml = '';
   lines.forEach((line, idx) => {
@@ -70,6 +71,10 @@ export function renderHtmlEmbed(frames: TerminalFrame[], options: RenderOptions 
     .dot.yellow { background: #FFBD2E; }
     .dot.green { background: #27C93F; }
     .termcast-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       color: ${theme.foreground};
       opacity: 0.8;
       font-size: 13px;
