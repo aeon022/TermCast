@@ -5,7 +5,7 @@ import { startPreviewServer } from './server';
 
 function get(port: number, host = '127.0.0.1'): Promise<{ status: number; type: string; body: string }> {
   return new Promise((resolve, reject) => {
-    http.get({ host, port, path: '/' }, (res) => {
+    http.get({ host, port, path: '/', agent: false, headers: { Connection: 'close' } }, (res) => {
       let body = '';
       res.on('data', (d) => (body += d));
       res.on('end', () => resolve({ status: res.statusCode || 0, type: String(res.headers['content-type']), body }));
@@ -29,7 +29,9 @@ test('the preview serves the SVG on loopback only, and moves on when the port is
     assert.strictEqual(res.body, '<svg id="one"/>');
     assert.strictEqual((await get(a2.port)).body, '<svg id="two"/>');
   } finally {
-    first.close();
-    second.close();
+    for (const srv of [first, second]) {
+      srv.closeAllConnections?.();
+      srv.close();
+    }
   }
 });
