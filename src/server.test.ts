@@ -14,6 +14,8 @@ function get(port: number, host = '127.0.0.1'): Promise<{ status: number; type: 
 }
 
 test('the preview serves the SVG on loopback only, and moves on when the port is taken', async () => {
+  const log = console.log;
+  console.log = () => {}; // the preview announces itself on stdout, which the test runner reads
   const first = startPreviewServer('<svg id="one"/>', 39333, false);
   await new Promise((r) => first.once('listening', r));
   const second = startPreviewServer('<svg id="two"/>', 39333, false);
@@ -29,6 +31,7 @@ test('the preview serves the SVG on loopback only, and moves on when the port is
     assert.strictEqual(res.body, '<svg id="one"/>');
     assert.strictEqual((await get(a2.port)).body, '<svg id="two"/>');
   } finally {
+    console.log = log;
     for (const srv of [first, second]) {
       srv.closeAllConnections?.();
       srv.close();
