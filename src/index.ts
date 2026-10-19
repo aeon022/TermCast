@@ -13,6 +13,7 @@ import { renderAnimatedGridFrames, renderGridFrame } from './renderer/svg';
 import { cropBlankRows } from './crop';
 import { redactFrames } from './redact';
 import { applySpeed } from './pipeline';
+import { wizard } from './wizard';
 import { Frame, RenderOptions } from './types';
 
 const BUY_URL = 'https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1';
@@ -312,5 +313,10 @@ styleOptions(program.command('serve <cmd>').description('Record a command and op
       fail(err, 'Preview Error');
     }
   });
+
+program
+  .command('wizard')
+  .description('Step-by-step assistant: answers a few questions, shows the command and runs it')
+  .action(() => wizard().catch((err) => { process.exitCode = 1; console.error(`[ttyreel] ${err.message || err}`); }));
 
 program.parse(process.argv);

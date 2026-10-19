@@ -135,3 +135,10 @@ test('serve --watch: viewer page, loopback only, and a file change re-records an
     child.kill();
   }
 });
+
+test('wizard asks, shows the equivalent command and runs it', () => {
+  const r = run(['wizard'], { input: '1\necho hi\n1\n1\nn\n1\nw\nn\n', env: { ...process.env, HOME: home, LANG: 'en_US.UTF-8', POLAR_LICENSE_KEY: '' } });
+  assert.strictEqual(r.status, 0);
+  assert.match(r.stderr, /ttyreel render 'echo hi' --theme dracula --format svg -o w/);
+  assert.ok(fs.existsSync(path.join(home, 'w.svg')));
+});

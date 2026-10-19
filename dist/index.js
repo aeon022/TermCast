@@ -47,6 +47,7 @@ const server_1 = require("./server");
 const svg_1 = require("./renderer/svg");
 const crop_1 = require("./crop");
 const redact_1 = require("./redact");
+const wizard_1 = require("./wizard");
 const BUY_URL = 'https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1';
 const shellName = path.basename(process.env.SHELL || 'sh');
 const program = new commander_1.Command();
@@ -342,4 +343,8 @@ styleOptions(program.command('serve <cmd>').description('Record a command and op
         fail(err, 'Preview Error');
     }
 });
+program
+    .command('wizard')
+    .description('Step-by-step assistant: answers a few questions, shows the command and runs it')
+    .action(() => (0, wizard_1.wizard)().catch((err) => { process.exitCode = 1; console.error(`[ttyreel] ${err.message || err}`); }));
 program.parse(process.argv);

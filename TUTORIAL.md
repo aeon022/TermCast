@@ -1,5 +1,7 @@
 # ttyreel tutorial
 
+New to the terminal? Run `ttyreel wizard`: it asks, shows the command, runs it.
+
 Recipes for real work. All commands write files next to where you run them; `-o name` sets the name (the extension is added).
 
 ## 1. A command in your README

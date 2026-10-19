@@ -33,6 +33,8 @@ npm install -g .
 
 ## Quick start
 
+New to the terminal? Run `ttyreel wizard`: it asks a few questions, shows the command and runs it.
+
 ```bash
 ttyreel demo                                        # see what it looks like
 ttyreel render "git status" -o status               # run a command, write status.svg
