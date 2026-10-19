@@ -108,3 +108,54 @@ const svg_2 = require("./svg");
     const svg = (0, svg_1.renderGridFrame)(makeFrame('x'), { watermark: false, title: long });
     strict_1.default.ok(!svg.includes('x'.repeat(100)), 'the full title must not be in the SVG');
 });
+const svg_3 = require("./svg");
+(0, node_test_1.test)('a light theme adds a second rendering that is shown for prefers-color-scheme: light', () => {
+    const svg = (0, svg_1.renderGridFrame)(makeFrame('hi'), { watermark: false, theme: 'github-dark', lightTheme: 'github-light' });
+    strict_1.default.match(svg, /prefers-color-scheme: light/);
+    strict_1.default.match(svg, /class="ttyreel-dark"/);
+    strict_1.default.match(svg, /class="ttyreel-light"/);
+    strict_1.default.match(svg, /#0d1117/, 'the dark background');
+    strict_1.default.match(svg, /#ffffff/, 'the light background');
+    strict_1.default.match(svg, /id="bgGrad"/);
+    strict_1.default.match(svg, /id="bgGrad-light"/);
+    strict_1.default.match(svg, /url\(#bgGrad-light\)/);
+    strict_1.default.equal((svg.match(/<svg /g) || []).length, 1, 'one root element');
+    strict_1.default.equal((0, svg_1.renderGridFrame)(makeFrame('hi'), { watermark: false, theme: 'github-dark' }).includes('ttyreel-light'), false);
+});
+(0, node_test_1.test)('light/dark also works for animations', () => {
+    const frames = [makeFrame('a', 0), makeFrame('ab', 500)];
+    const svg = (0, svg_1.renderAnimatedGridFrames)(frames, { watermark: false, theme: 'one-dark', lightTheme: 'solarized-light' });
+    strict_1.default.match(svg, /ttyreel-light/);
+    strict_1.default.match(svg, /#fdf6e3/);
+});
+(0, node_test_1.test)('--no-window drops the title bar and shrinks the image; a custom font goes first in the stack', () => {
+    const normal = (0, svg_1.renderGridFrame)(makeFrame('hi'), { watermark: false });
+    const bare = (0, svg_1.renderGridFrame)(makeFrame('hi'), { watermark: false, windowless: true });
+    strict_1.default.match(normal, /#FF5F56/);
+    strict_1.default.doesNotMatch(bare, /#FF5F56/);
+    const h = (svg) => Number(/height="(\d+)"/.exec(svg)[1]);
+    strict_1.default.equal(h(normal) - h(bare), 36);
+    strict_1.default.equal((0, svg_3.fontStack)({ fontFamily: 'Fira Code' }), "'Fira Code', Menlo, Monaco, 'Courier New', monospace");
+    strict_1.default.equal((0, svg_3.fontStack)({ fontFamily: "x'><script>" }), "'xscript', Menlo, Monaco, 'Courier New', monospace");
+});
+(0, node_test_1.test)('loop:false plays the animation once and stays on the last frame', () => {
+    const frames = [makeFrame('a', 0), makeFrame('ab', 500)];
+    const once = (0, svg_1.renderAnimatedGridFrames)(frames, { watermark: false, loop: false });
+    const forever = (0, svg_1.renderAnimatedGridFrames)(frames, { watermark: false });
+    strict_1.default.match(once, /animation-iteration-count: 1; animation-fill-mode: forwards/);
+    strict_1.default.match(forever, /animation-iteration-count: infinite/);
+});
+const svg_4 = require("./svg");
+const themes_1 = require("../themes");
+(0, node_test_1.test)('the light rendering re-colours default text and ANSI colours for the light theme', () => {
+    const dark = themes_1.THEMES['github-dark'];
+    const light = themes_1.THEMES['github-light'];
+    const f = { grid: [[{ char: 'a', fg: dark.foreground, bg: dark.background }, { char: 'b', fg: dark.colors.red, bg: dark.background }, { char: 'c', fg: '#123456', bg: dark.background }]], cursorX: 0, cursorY: 0, cursorVisible: false, timestampMs: 0 };
+    const out = (0, svg_4.remapTheme)([f], dark, light)[0].grid[0];
+    strict_1.default.equal(out[0].fg, light.foreground);
+    strict_1.default.equal(out[0].bg, light.background);
+    strict_1.default.equal(out[1].fg, light.colors.red);
+    strict_1.default.equal(out[2].fg, '#123456', 'true colours stay');
+    const svg = (0, svg_1.renderGridFrame)(f, { watermark: false, theme: 'github-dark', lightTheme: 'github-light' });
+    strict_1.default.ok((svg.match(/fill="#24292f"/g) || []).length >= 1, 'dark text on the light page');
+});

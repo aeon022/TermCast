@@ -38,3 +38,39 @@ test('the preview serves the SVG on loopback only, and moves on when the port is
     }
   }
 });
+
+test('watch mode: the root is a viewer page and update() pushes a reload event', async () => {
+  const log = console.log;
+  console.log = () => {};
+  const srv = startPreviewServer('<svg id="a"/>', 39433, false, true);
+  await new Promise((r) => srv.once('listening', r));
+  try {
+    const port = (srv.address() as any).port;
+    assert.match((await get(port)).body, /EventSource\('\/events'\)/);
+    const img = await new Promise<string>((resolve, reject) => {
+      http.get({ host: '127.0.0.1', port, path: '/image.svg', agent: false }, (res) => { let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => resolve(b)); }).on('error', reject);
+    });
+    assert.equal(img, '<svg id="a"/>');
+    const got = await new Promise<string>((resolve, reject) => {
+      const req = http.get({ host: '127.0.0.1', port, path: '/events', agent: false }, (res) => {
+        let buf = '';
+        res.on('data', (d) => {
+          buf += d;
+          if (buf.includes('connected')) srv.update('<svg id="b"/>');
+          if (buf.includes('data: reload')) { req.destroy(); resolve(buf); }
+        });
+      });
+      req.on('error', (e: any) => { if (e.code !== 'ECONNRESET') reject(e); });
+      setTimeout(() => reject(new Error('no reload event')), 4000);
+    });
+    assert.match(got, /data: reload/);
+    const img2 = await new Promise<string>((resolve, reject) => {
+      http.get({ host: '127.0.0.1', port, path: '/image.svg?t=1', agent: false }, (res) => { let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => resolve(b)); }).on('error', reject);
+    });
+    assert.equal(img2, '<svg id="b"/>', 'the new image is served after the update');
+  } finally {
+    console.log = log;
+    srv.closeAllConnections?.();
+    srv.close();
+  }
+});

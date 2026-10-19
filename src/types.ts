@@ -1,4 +1,4 @@
-export type ThemeName = 'dracula' | 'tokyonight' | 'nord' | 'catppuccin' | 'monokai';
+export type ThemeName = string; // a built-in theme name or one registered from a --theme-file
 export type GradientPreset = 'default' | 'cyberpunk' | 'sunset' | 'matrix' | 'hyper' | 'neon' | 'midnight';
 export type PromptStyle = 'none' | 'zsh' | 'starship' | 'bash';
 
@@ -33,6 +33,9 @@ export interface RenderOptions {
   fontFamily?: string;
   fontSize?: number;
   padding?: number;
+  loop?: boolean; // animated SVG: repeat forever (default) or play once and stay on the last frame
+  windowless?: boolean; // no title bar and traffic lights: just the terminal body
+  lightTheme?: ThemeName; // SVG only: also draw this theme and switch with prefers-color-scheme
   watermark?: boolean;
   licenseKey?: string;
   animated?: boolean;

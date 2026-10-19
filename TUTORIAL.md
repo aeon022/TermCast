@@ -1,133 +1,95 @@
-# 🎬 ttyreel — Comprehensive Tutorial & How-To Guide
+# ttyreel tutorial
 
-Welcome to the **ttyreel** tutorial! This guide covers real-world workflows, command-line recipes, and customization options for generating beautiful terminal vector SVGs and interactive HTML embeds.
+Recipes for real work. All commands write files next to where you run them; `-o name` sets the name (the extension is added).
 
----
-
-## 📚 Table of Contents
-
-1. [Quick Installation](#1-quick-installation)
-2. [Workflow 1: Generating Animated Demo SVGs for GitHub READMEs](#workflow-1-generating-animated-demo-svgs-for-github-readmes)
-3. [Workflow 2: Rendering Real Terminal Command Output](#workflow-2-rendering-real-terminal-command-output)
-4. [Workflow 3: Using Interactive HTML Embeds with Copy Button](#workflow-3-using-interactive-html-embeds-with-copy-button)
-5. [Workflow 4: Live Web Preview Server](#workflow-4-live-web-preview-server)
-6. [Workflow 5: Customizing Themes, Gradients & Shell Prompts](#workflow-5-customizing-themes-gradients--shell-prompts)
-7. [Pro License Activation](#pro-license-activation)
-
----
-
-## 1. Quick Installation
-
-Install ttyreel globally via npm:
+## 1. A command in your README
 
 ```bash
-git clone https://github.com/aeon022/ttyreel.git && cd ttyreel && npm install --omit=dev && npm install -g .
+ttyreel render "git log --oneline -5" -o docs/log --format svg
 ```
-
-Or run any command without installing via `npx`:
-
-```bash
-npx github:aeon022/ttyreel demo
-```
-
----
-
-## Workflow 1: Generating Animated Demo SVGs for GitHub READMEs
-
-To create an animated vector SVG showcasing a demo session with a blinking cursor:
-
-```bash
-ttyreel demo --animated --gradient cyberpunk --format svg --output demo-showcase.svg
-```
-
-This generates `demo-showcase.svg` which can be directly embedded into your GitHub `README.md`:
-
 ```markdown
-![ttyreel Demo](./demo-showcase.svg)
+![git log](docs/log.svg)
 ```
+`--markdown` prints that image line for you.
 
----
-
-## Workflow 2: Rendering Real Terminal Command Output
-
-You can render the output of any shell command (such as `git status`, `ls -la`, or `npm test`):
+## 2. A screencast-style demo (typed command)
 
 ```bash
-ttyreel render "git status" --animated --prompt starship --theme tokyonight --output git-status
+ttyreel render "npm test" --type --animated -o docs/test
 ```
+`--prompt starship` (or `zsh`, `bash`, `none`, or your own text) changes the prompt, `--type-speed 30` types faster, `--speed 2` plays the output twice as fast, `--no-loop` plays once.
 
-This captures the output, formats ANSI color codes, and exports `git-status.svg`.
+## 3. A multi-step demo from a script
 
----
+```yaml
+# docs/demo.yml
+title: Install and run
+theme: nord
+prompt: starship
+steps:
+  - cmd: npm install
+    pause: 800
+  - cmd: npm start
+    show: my-app start        # typed instead of the real command
+```
+```bash
+ttyreel play docs/demo.yml --animated --format svg,gif
+```
+A step with `type: false` shows no prompt and no typing. Flags override the file.
 
-## Workflow 3: Using Interactive HTML Embeds with Copy Button
-
-To generate a standalone HTML snippet featuring a **Copy Code** button, line numbers, and glassmorphism styling for your website or documentation site:
+## 4. Convert an asciinema recording
 
 ```bash
-ttyreel render "npm test" --format html --output npm-test
+asciinema rec session.cast
+ttyreel cast session.cast --format gif --idle-limit 1.5
 ```
 
-This generates `npm-test.html` which you can embed directly into your documentation site or web page.
-
----
-
-## Workflow 4: Live Web Preview Server
-
-Want to tweak options and see the rendered terminal graphic live in your browser? Use `ttyreel serve`:
+## 5. Light and dark pages
 
 ```bash
-ttyreel serve "ls -la" --animated --theme dracula
+ttyreel render "ls -la" --theme github-dark --light-theme github-light --animated -o docs/ls
 ```
+The SVG follows the viewer's colour scheme (GitHub does).
 
-This spins up a local web server at `http://localhost:3333` and automatically opens your default browser with live SVG preview!
+## 6. Keep secrets out of the picture
 
----
-
-## Workflow 5: Customizing Themes, Gradients & Shell Prompts
-
-### Themes (`-t` / `--theme`)
-- `dracula` (Default)
-- `tokyonight`
-- `nord`
-- `catppuccin`
-- `monokai`
-
-### Gradient Background Presets (`-g` / `--gradient`)
-- `cyberpunk` (Neon Pink to Cyan)
-- `sunset` (Warm Orange to Magenta)
-- `matrix` (Dark Emerald Green)
-- `hyper` (Ultra Purple to Orange)
-- `neon` (Electric Green to Blue)
-- `midnight` (Deep Slate Purple)
-
-### Shell Prompt Badges (`--prompt`)
-- `zsh`: `user@macbook:~/Projects/my-app git:(main) ❯`
-- `starship`: `📁 my-app on 🌿 main [⚡ 42ms] ❯`
-
-### Recipe Example:
-```bash
-ttyreel render "npm run build" \
-  --theme catppuccin \
-  --gradient hyper \
-  --prompt starship \
-  --animated \
-  --format both \
-  --output build-showcase
-```
-
----
-
-## Pro License Activation
-
-Unlock watermark removal and custom styling by activating your Polar license key:
+Tokens, keys, `password=` values and private keys are masked automatically (also in the window title, which is the command line). Add your own patterns or turn it off:
 
 ```bash
-ttyreel render "git status" --license polar_cl_YOUR_POLAR_KEY
+ttyreel render "cat deploy.log" --redact "prod-[a-z0-9]+" --redact "10\.0\.\d+\.\d+"
+ttyreel render "echo hello" --no-redact
+```
+It is a safety net: always look at the result before you publish it.
+
+## 7. Sharp images and part of the screen
+
+```bash
+ttyreel render "npm test" --format png --scale 2     # retina-sharp PNG
+ttyreel render "npm test" --lines 5-12                # only rows 5 to 12
+ttyreel render "make" --no-window --padding 0         # just the terminal, no frame
 ```
 
-👉 **[Get Pro License on Polar](https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1)**
+## 8. Your own look
 
----
+```bash
+ttyreel render "ls" --theme-file mine.json --font "JetBrains Mono" --font-size 16
+```
+See the README for the theme file format.
 
-Crafted with 💜 by **abteilung83**.
+## 9. Live preview while you work
+
+```bash
+ttyreel serve "npm test" --watch src
+```
+Opens a page on `127.0.0.1` that records again and reloads whenever a file in `src` changes.
+
+## 10. Keep README demos current in CI
+
+```yaml
+- uses: aeon022/ttyreel@main
+  with:
+    script: docs/demo.yml
+    output: docs/demo
+    args: --animated --light-theme github-light
+```
+Commit the result in a later step (for example with `stefanzweifel/git-auto-commit-action`).

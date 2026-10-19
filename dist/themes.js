@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.THEMES = exports.GRADIENTS = void 0;
 exports.gradientStops = gradientStops;
+exports.parseThemeFile = parseThemeFile;
+exports.registerThemeFile = registerThemeFile;
 exports.GRADIENTS = {
     default: 'linear-gradient(135deg, #6272a4 0%, #bd93f9 100%)',
     cyberpunk: 'linear-gradient(135deg, #ff007f 0%, #00f0ff 100%)',
@@ -81,21 +83,70 @@ exports.THEMES = {
         }
     },
     monokai: {
-        name: 'Monokai Pro',
-        background: '#2d2a2e',
-        foreground: '#fcfcfa',
-        titleBar: '#221f22',
-        gradientBackground: 'linear-gradient(135deg, #ffd866 0%, #ff6188 100%)',
+        // the classic Monokai palette as shipped by VS Code's MIT-licensed theme-monokai (not the commercial Monokai Pro)
+        name: 'Monokai',
+        background: '#272822',
+        foreground: '#f8f8f2',
+        titleBar: '#1e1f1c',
+        gradientBackground: 'linear-gradient(135deg, #e6db74 0%, #f92672 100%)',
         colors: {
-            black: '#403e41',
-            red: '#ff6188',
-            green: '#a9dc76',
-            yellow: '#ffd866',
-            blue: '#fc9867',
-            magenta: '#ab9df2',
-            cyan: '#78dce8',
-            white: '#fcfcfa'
+            black: '#3e3d32',
+            red: '#f92672',
+            green: '#a6e22e',
+            yellow: '#e6db74',
+            blue: '#66d9ef',
+            magenta: '#ae81ff',
+            cyan: '#a1efe4',
+            white: '#f8f8f2'
         }
+    },
+    gruvbox: {
+        name: 'Gruvbox Dark',
+        background: '#282828',
+        foreground: '#ebdbb2',
+        titleBar: '#1d2021',
+        gradientBackground: 'linear-gradient(135deg, #fabd2f 0%, #fe8019 100%)',
+        colors: { black: '#3c3836', red: '#fb4934', green: '#b8bb26', yellow: '#fabd2f', blue: '#83a598', magenta: '#d3869b', cyan: '#8ec07c', white: '#ebdbb2' }
+    },
+    'solarized-dark': {
+        name: 'Solarized Dark',
+        background: '#002b36',
+        foreground: '#839496',
+        titleBar: '#00212b',
+        gradientBackground: 'linear-gradient(135deg, #268bd2 0%, #2aa198 100%)',
+        colors: { black: '#073642', red: '#dc322f', green: '#859900', yellow: '#b58900', blue: '#268bd2', magenta: '#d33682', cyan: '#2aa198', white: '#eee8d5' }
+    },
+    'solarized-light': {
+        name: 'Solarized Light',
+        background: '#fdf6e3',
+        foreground: '#657b83',
+        titleBar: '#eee8d5',
+        gradientBackground: 'linear-gradient(135deg, #b58900 0%, #cb4b16 100%)',
+        colors: { black: '#073642', red: '#dc322f', green: '#859900', yellow: '#b58900', blue: '#268bd2', magenta: '#d33682', cyan: '#2aa198', white: '#93a1a1' }
+    },
+    'one-dark': {
+        name: 'One Dark',
+        background: '#282c34',
+        foreground: '#abb2bf',
+        titleBar: '#21252b',
+        gradientBackground: 'linear-gradient(135deg, #61afef 0%, #c678dd 100%)',
+        colors: { black: '#3f4451', red: '#e06c75', green: '#98c379', yellow: '#e5c07b', blue: '#61afef', magenta: '#c678dd', cyan: '#56b6c2', white: '#abb2bf' }
+    },
+    'github-dark': {
+        name: 'GitHub Dark',
+        background: '#0d1117',
+        foreground: '#c9d1d9',
+        titleBar: '#161b22',
+        gradientBackground: 'linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%)',
+        colors: { black: '#484f58', red: '#ff7b72', green: '#3fb950', yellow: '#d29922', blue: '#58a6ff', magenta: '#bc8cff', cyan: '#39c5cf', white: '#b1bac4' }
+    },
+    'github-light': {
+        name: 'GitHub Light',
+        background: '#ffffff',
+        foreground: '#24292f',
+        titleBar: '#f6f8fa',
+        gradientBackground: 'linear-gradient(135deg, #0969da 0%, #8250df 100%)',
+        colors: { black: '#24292f', red: '#cf222e', green: '#116329', yellow: '#9a6700', blue: '#0969da', magenta: '#8250df', cyan: '#1b7c83', white: '#6e7781' }
     }
 };
 /**
@@ -117,4 +168,47 @@ function gradientStops(css, fallbackA, fallbackB) {
         return `      <stop offset="${offset}%" stop-color="${st.color}"/>`;
     })
         .join('\n');
+}
+const HEX = /^#[0-9a-fA-F]{3,8}$/;
+const ANSI_KEYS = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'];
+/** Checks a user-supplied theme object and fills the optional parts; throws a precise message when it is unusable. */
+function parseThemeFile(json, fileName = 'theme') {
+    const fail = (m) => { throw new Error(`Invalid theme file ${fileName}: ${m}`); };
+    if (!json || typeof json !== 'object')
+        fail('expected a JSON object');
+    for (const k of ['background', 'foreground'])
+        if (!HEX.test(json[k] || ''))
+            fail(`"${k}" must be a hex colour like #1e1e2e`);
+    const colors = json.colors;
+    if (!colors || typeof colors !== 'object')
+        fail('missing "colors" with black, red, green, yellow, blue, magenta, cyan, white');
+    for (const k of ANSI_KEYS)
+        if (!HEX.test(colors[k] || ''))
+            fail(`colors.${k} must be a hex colour`);
+    if (json.titleBar !== undefined && !HEX.test(json.titleBar))
+        fail('"titleBar" must be a hex colour');
+    return {
+        name: String(json.name || fileName),
+        background: json.background,
+        foreground: json.foreground,
+        titleBar: json.titleBar || json.background,
+        gradientBackground: typeof json.gradientBackground === 'string' ? json.gradientBackground : `linear-gradient(135deg, ${colors.blue} 0%, ${colors.magenta} 100%)`,
+        colors: Object.fromEntries(ANSI_KEYS.map((k) => [k, colors[k]]))
+    };
+}
+/** Reads a theme from a JSON file, registers it, and returns the name to use for it. */
+function registerThemeFile(file) {
+    const fs = require('fs');
+    const path = require('path');
+    let json;
+    try {
+        json = JSON.parse(fs.readFileSync(file, 'utf8'));
+    }
+    catch (err) {
+        throw new Error(`Cannot read theme file ${file}: ${err.message}`);
+    }
+    const theme = parseThemeFile(json, path.basename(file));
+    const key = `file:${path.basename(file, path.extname(file))}`;
+    exports.THEMES[key] = theme;
+    return key;
 }

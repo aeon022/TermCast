@@ -120,3 +120,61 @@ test('long window titles are shortened so they stay clear of the traffic lights'
   const svg = renderGridFrame(makeFrame('x'), { watermark: false, title: long });
   assert.ok(!svg.includes('x'.repeat(100)), 'the full title must not be in the SVG');
 });
+
+import { combineLightDark, fontStack } from './svg';
+
+test('a light theme adds a second rendering that is shown for prefers-color-scheme: light', () => {
+  const svg = renderGridFrame(makeFrame('hi'), { watermark: false, theme: 'github-dark', lightTheme: 'github-light' });
+  assert.match(svg, /prefers-color-scheme: light/);
+  assert.match(svg, /class="ttyreel-dark"/);
+  assert.match(svg, /class="ttyreel-light"/);
+  assert.match(svg, /#0d1117/, 'the dark background');
+  assert.match(svg, /#ffffff/, 'the light background');
+  assert.match(svg, /id="bgGrad"/);
+  assert.match(svg, /id="bgGrad-light"/);
+  assert.match(svg, /url\(#bgGrad-light\)/);
+  assert.equal((svg.match(/<svg /g) || []).length, 1, 'one root element');
+  assert.equal(renderGridFrame(makeFrame('hi'), { watermark: false, theme: 'github-dark' }).includes('ttyreel-light'), false);
+});
+
+test('light/dark also works for animations', () => {
+  const frames = [makeFrame('a', 0), makeFrame('ab', 500)];
+  const svg = renderAnimatedGridFrames(frames, { watermark: false, theme: 'one-dark', lightTheme: 'solarized-light' });
+  assert.match(svg, /ttyreel-light/);
+  assert.match(svg, /#fdf6e3/);
+});
+
+test('--no-window drops the title bar and shrinks the image; a custom font goes first in the stack', () => {
+  const normal = renderGridFrame(makeFrame('hi'), { watermark: false });
+  const bare = renderGridFrame(makeFrame('hi'), { watermark: false, windowless: true });
+  assert.match(normal, /#FF5F56/);
+  assert.doesNotMatch(bare, /#FF5F56/);
+  const h = (svg: string) => Number(/height="(\d+)"/.exec(svg)![1]);
+  assert.equal(h(normal) - h(bare), 36);
+  assert.equal(fontStack({ fontFamily: 'Fira Code' }), "'Fira Code', Menlo, Monaco, 'Courier New', monospace");
+  assert.equal(fontStack({ fontFamily: "x'><script>" }), "'xscript', Menlo, Monaco, 'Courier New', monospace");
+});
+
+test('loop:false plays the animation once and stays on the last frame', () => {
+  const frames = [makeFrame('a', 0), makeFrame('ab', 500)];
+  const once = renderAnimatedGridFrames(frames, { watermark: false, loop: false });
+  const forever = renderAnimatedGridFrames(frames, { watermark: false });
+  assert.match(once, /animation-iteration-count: 1; animation-fill-mode: forwards/);
+  assert.match(forever, /animation-iteration-count: infinite/);
+});
+
+import { remapTheme } from './svg';
+import { THEMES } from '../themes';
+
+test('the light rendering re-colours default text and ANSI colours for the light theme', () => {
+  const dark = THEMES['github-dark'];
+  const light = THEMES['github-light'];
+  const f: Frame = { grid: [[{ char: 'a', fg: dark.foreground, bg: dark.background }, { char: 'b', fg: dark.colors.red, bg: dark.background }, { char: 'c', fg: '#123456', bg: dark.background }]], cursorX: 0, cursorY: 0, cursorVisible: false, timestampMs: 0 };
+  const out = remapTheme([f], dark, light)[0].grid[0];
+  assert.equal(out[0].fg, light.foreground);
+  assert.equal(out[0].bg, light.background);
+  assert.equal(out[1].fg, light.colors.red);
+  assert.equal(out[2].fg, '#123456', 'true colours stay');
+  const svg = renderGridFrame(f, { watermark: false, theme: 'github-dark', lightTheme: 'github-light' });
+  assert.ok((svg.match(/fill="#24292f"/g) || []).length >= 1, 'dark text on the light page');
+});

@@ -1,0 +1,12 @@
+title: ttyreel
+theme: tokyonight
+prompt: starship
+cols: 78
+typeSpeed: 40
+steps:
+  - cmd: "printf '\\033[32m✔\\033[0m 77 tests passed\\n'"
+    show: npm test
+    pause: 500
+  - cmd: "printf '\\033[36m›\\033[0m token masked: \\033[2mGITHUB_TOKEN=\\033[0mghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\n'"
+    show: ttyreel render "env | grep TOKEN"
+    pause: 900

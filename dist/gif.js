@@ -42,13 +42,14 @@ const fs = __importStar(require("fs"));
 const os = __importStar(require("os"));
 const svg_1 = require("./renderer/svg");
 const MONOSPACE_FONT_CANDIDATES = {
-    darwin: ['/System/Library/Fonts/Menlo.ttc', '/System/Library/Fonts/Monaco.ttf'],
+    darwin: ['/System/Library/Fonts/Menlo.ttc', '/System/Library/Fonts/Monaco.ttf', '/System/Library/Fonts/Apple Symbols.ttf', '/System/Library/Fonts/Supplemental/Arial Unicode.ttf'],
     linux: [
         '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',
         '/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf',
-        '/usr/share/fonts/TTF/DejaVuSansMono.ttf'
+        '/usr/share/fonts/TTF/DejaVuSansMono.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
     ],
-    win32: ['C:\\Windows\\Fonts\\consola.ttf', 'C:\\Windows\\Fonts\\cour.ttf']
+    win32: ['C:\\Windows\\Fonts\\consola.ttf', 'C:\\Windows\\Fonts\\cour.ttf', 'C:\\Windows\\Fonts\\seguisym.ttf']
 };
 // Resolving fonts via loadSystemFonts is a full system font-database scan
 // — measured ~140x slower per Resvg instantiation than pointing at a known
@@ -108,12 +109,7 @@ function buildEncodableFrames(frames) {
     }
     return result;
 }
-// Renders each frame to SVG, rasterizes it via resvg (no system
-// dependencies beyond what npm already installs), and assembles the PNG
-// sequence into an animated GIF.
-// `fps` is kept for call-site compatibility but no longer sets the playback
-// delay — per-frame delays now come from the recording's real timestamps.
-async function encodeGif(frames, options, fps) {
+async function encodeGif(frames, options, fps, enc = {}) {
     if (frames.length === 0) {
         throw new Error('encodeGif requires at least one frame');
     }
@@ -122,12 +118,12 @@ async function encodeGif(frames, options, fps) {
     const encoder = (0, gifenc_1.GIFEncoder)();
     for (let i = 0; i < encodable.length; i++) {
         const svg = (0, svg_1.renderGridFrame)(encodable[i].frame, options);
-        const resvg = new resvg_js_1.Resvg(svg, { font: fontOpts });
+        const resvg = new resvg_js_1.Resvg(svg, { font: fontOpts, fitTo: enc.scale && enc.scale !== 1 ? { mode: 'zoom', value: enc.scale } : { mode: 'original' } });
         const rendered = resvg.render();
         const { pixels, width, height } = rendered;
         const palette = (0, gifenc_1.quantize)(pixels, 256);
         const indexed = (0, gifenc_1.applyPalette)(pixels, palette);
-        encoder.writeFrame(indexed, width, height, { palette, delay: encodable[i].delayMs, first: i === 0 });
+        encoder.writeFrame(indexed, width, height, { palette, delay: encodable[i].delayMs, first: i === 0, repeat: enc.loop === false ? -1 : 0 });
     }
     encoder.finish();
     return Buffer.from(encoder.bytes());

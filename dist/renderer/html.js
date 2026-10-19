@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.renderHtmlEmbed = renderHtmlEmbed;
 const themes_1 = require("../themes");
 const parser_1 = require("../parser");
+const svg_1 = require("./svg");
 function renderHtmlEmbed(frames, options = {}) {
     const themeName = (options.theme || 'dracula');
     const theme = themes_1.THEMES[themeName] || themes_1.THEMES.dracula;
@@ -96,7 +97,7 @@ function renderHtmlEmbed(frames, options = {}) {
     .ttyreel-copy:hover { background: rgba(255,255,255,0.25); }
     .ttyreel-body {
       padding: 20px;
-      font-family: Menlo, Monaco, 'Courier New', monospace;
+      font-family: ${(0, svg_1.fontStack)(options)};
       font-size: 14px;
       line-height: 1.5;
       overflow-x: auto;
@@ -124,14 +125,14 @@ function renderHtmlEmbed(frames, options = {}) {
 <body>
 
 <div class="ttyreel-card">
-  <div class="ttyreel-header">
-    <div class="ttyreel-dots">
+  <div class="ttyreel-header"${options.windowless ? ' style="background: transparent; justify-content: flex-end;"' : ''}>
+${options.windowless ? '' : `    <div class="ttyreel-dots">
       <div class="dot red"></div>
       <div class="dot yellow"></div>
       <div class="dot green"></div>
     </div>
     <div class="ttyreel-title">${(0, parser_1.escapeXml)(windowTitle)}</div>
-    <button class="ttyreel-copy" onclick="copyCode()">Copy</button>
+`}    <button class="ttyreel-copy" onclick="copyCode()">Copy</button>
   </div>
   <div class="ttyreel-body">
 ${linesHtml}  </div>

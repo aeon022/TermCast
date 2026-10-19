@@ -1,31 +1,19 @@
-# 🎬 ttyreel: Pretty Terminal SVG & GIF Studio
+# 🎬 ttyreel
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Support on Polar](https://img.shields.io/badge/Support_ttyreel-Polar-0066FF.svg?style=flat-square&logo=polar)](https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1)
+[![ci](https://github.com/aeon022/ttyreel/actions/workflows/ci.yml/badge.svg)](https://github.com/aeon022/ttyreel/actions/workflows/ci.yml)
 [![Created by abteilung83](https://img.shields.io/badge/Crafted%20by-abteilung83-black.svg)](https://github.com/aeon022)
 
-**ttyreel** is a CLI tool engineered by **abteilung83**. It captures terminal outputs or shell commands, applies modern developer aesthetics (macOS glassmorphism window frame with traffic-light buttons, vibrant gradient backgrounds, syntax themes), and exports crisp, scalable vector SVGs and interactive HTML embeds for GitHub READMEs, ProductHunt launches, and X/Twitter demos.
+**Turn terminal output into polished images for READMEs, docs and posts.** Record a command, type it out like a screencast, run a whole demo from a script, or convert an asciinema recording. Output is SVG (static or animated, light/dark aware), GIF, PNG or HTML with a copy button. Tokens and passwords are **masked automatically**.
 
 ![ttyreel demo](docs/demo.svg)
 
-*This image was made with `ttyreel render`.*
+*This image was made with `ttyreel play docs/demo.yml`.*
 
 ---
 
-## 🔥 Ultra-Cool Features
+## Install
 
-- ⌨️ **Pure CSS Typing Animation (`--animated`)**: Generates SVGs where text types out line-by-line with a blinking cursor without any JavaScript!
-- 🌈 **7 Gradient Canvas Presets (`-g default / cyberpunk / sunset / matrix / hyper / neon / midnight`)**: Instant vibrant gradient backgrounds.
-- ✂️ **Fits the content**: the window is cropped to the lines your command printed, not drawn as a fixed 24-row terminal.
-- 💡 **Interactive HTML Embeds (`--format html`)**: Standalone HTML component with a **Copy Code** button, line numbers, and hover effects.
-- ⚡ **Instant Live Preview Web Server (`ttyreel serve`)**: Launches a local web server to preview your rendered terminal graphics in real-time in your browser!
-- 🤖 **ZSH & Starship Prompt Generators (`demo --prompt zsh / starship`)**: Renders ZSH or Starship shell badges (`main 🌿`, `📁 my-app`).
-
----
-
-## 🚀 Quickstart & Tutorial
-
-### 1. Installation
 Needs Node 18+. Try it without installing:
 
 ```bash
@@ -41,66 +29,93 @@ npm install --omit=dev
 npm install -g .
 ```
 
-### 2. Generate Animated Demo SVG & HTML Embed
-Generate animated graphics with custom gradient background:
+`node-pty` (it runs your command in a real terminal) ships ready-made binaries for macOS and Windows. On Linux npm compiles it, so you need a C++ compiler and Python (`sudo apt install build-essential python3`).
+
+## Quick start
 
 ```bash
-ttyreel demo --animated --gradient cyberpunk --format both
+ttyreel demo                                        # see what it looks like
+ttyreel render "git status" -o status               # run a command, write status.svg
+ttyreel render "npm test" --type --animated         # type the command, play the output back
+ttyreel render "ls -la" --format svg,png --scale 2  # also a sharp PNG for retina screens
+ttyreel play demo.yml                               # several commands from a script
+ttyreel cast session.cast --format gif              # asciinema recording → GIF
+ttyreel serve "npm test" --watch src                # live preview that reloads when files change
 ```
 
-### 3. Render Any Shell Command Output with Starship Prompt
-Render the output of any command (e.g. `ls -la`, `git status`, `npm test`):
+Files are written next to where you run it (`-o path` sets the name, the extension is added for you). The paths go to stdout; status and hints go to stderr, so pipes stay clean.
 
-```bash
-ttyreel render "git status" --animated --theme tokyonight --format both --output git-status
+## What it can do
+
+- **Real output:** the command runs in a pseudoterminal, so colours, progress bars and cursor movement look like in your terminal.
+- **Typing:** `--type` shows a prompt (`--prompt zsh|bash|starship|none|"your text"`) and types the command character by character (`--type-speed 45`).
+- **Scripts:** a YAML or JSON file with steps, pauses and what to show while typing (see below).
+- **asciinema:** `ttyreel cast file.cast` reads format v2 and v3 and shortens long pauses (`--idle-limit 2`).
+- **Formats:** `--format svg,html,gif,png` (`both` = svg+html, `all` = everything). `--animated` plays the recording back in the SVG, `--no-loop` plays it once, `--speed 2` doubles the pace, `--scale 2` doubles GIF/PNG pixels, `--lines 3-8` draws only those rows.
+- **Fits the content:** the window is as tall as the output, not a fixed terminal.
+- **Secrets masked:** GitHub, OpenAI/Anthropic-style, AWS, Slack, Stripe and Google keys, JWTs, `Bearer` tokens, passwords in URLs, `password=…`/`token=…` values and private-key blocks are replaced by `•••` in the image **and in the window title** (which usually is the command line). `--redact REGEX` adds your own patterns, `--no-redact` turns it off. It is a safety net, not a guarantee: look at what you publish.
+- **Light and dark:** `--light-theme github-light` makes an SVG that switches with the viewer's colour scheme (GitHub honours this).
+- **Look:** 12 themes, 7 gradients, `--theme-file`, `--font`, `--font-size`, `--padding`, `--no-window`, `--title`.
+- **Preview server:** `serve` is reachable from your computer only (127.0.0.1); with `--watch` it records again when files change.
+
+## Themes and gradients
+
+`dracula` (default), `tokyonight`, `nord`, `catppuccin`, `monokai`, `gruvbox`, `solarized-dark`, `solarized-light`, `one-dark`, `github-dark`, `github-light`. Gradients: `default`, `cyberpunk`, `sunset`, `matrix`, `hyper`, `neon`, `midnight`; without `-g` the theme's own gradient is used.
+
+Your own theme is a JSON file:
+
+```json
+{
+  "name": "Mine",
+  "background": "#101010",
+  "foreground": "#eeeeee",
+  "titleBar": "#0a0a0a",
+  "gradientBackground": "linear-gradient(135deg, #ff0080 0%, #00f0ff 100%)",
+  "colors": { "black": "#000000", "red": "#ff0000", "green": "#00ff00", "yellow": "#ffff00",
+              "blue": "#0000ff", "magenta": "#ff00ff", "cyan": "#00ffff", "white": "#ffffff" }
+}
 ```
 
-### 4. Launch Instant Live Preview in Browser
-Preview any command output live in your default browser:
+`ttyreel render "ls" --theme-file mine.json`. `titleBar` and `gradientBackground` are optional.
 
-```bash
-ttyreel serve "npm test"
+## Demo scripts
+
+```yaml
+# demo.yml
+title: Set up my-app
+theme: tokyonight
+prompt: starship
+cols: 70
+steps:
+  - cmd: npm install
+    pause: 800
+  - cmd: "node build.js --release"
+    show: my-app build          # typed instead of the real command
+  - cmd: echo done
+    type: false                 # no prompt, no typing for this step
 ```
 
-The preview is served on `127.0.0.1` only (command output can contain secrets); if port 3333 is taken the next free port is used.
+`ttyreel play demo.yml --animated --format svg,gif`. Flags on the command line win over the file. The output is named after the script. Steps run in your shell like a Makefile: only play scripts you trust.
 
----
+## GitHub Action
 
-## 🎨 Built-In Themes & Gradients
+Keep README demos current:
 
-### Developer Themes (`-t` / `--theme`)
-- `dracula` (Default)
-- `tokyonight`
-- `nord`
-- `catppuccin`
-- `monokai`
+```yaml
+- uses: aeon022/ttyreel@main
+  with:
+    script: docs/demo.yml
+    output: docs/demo
+    format: svg
+    args: --animated --light-theme github-light
+```
 
-### Gradient Background Presets (`-g` / `--gradient`)
-- `cyberpunk` (Neon Pink to Cyan)
-- `sunset` (Warm Orange to Magenta)
-- `matrix` (Dark Emerald Green)
-- `hyper` (Ultra Purple to Orange)
-- `neon` (Electric Green to Blue)
-- `midnight` (Deep Slate Purple)
+## Good to know
 
----
-
-## 💜 Pro License & Support
-
-Support further development and remove the watermark!
-
-👉 **[Support & Unlock Pro on Polar](https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1)**
-
----
-
-## 🏢 About abteilung83
-
-**ttyreel** is engineered and maintained by **abteilung83** — specializing in developer tools, CLI utilities, workflow automation, and open-source integrations.
-
-- **GitHub**: [@aeon022](https://github.com/aeon022)
-
----
+- The GIF/PNG text is drawn with the monospace and symbol fonts installed on your computer. Rare symbols may come from a fallback font and look slightly different; SVG and HTML use the viewer's fonts.
+- Without a licence the images carry a small "Crafted with ttyreel" line. A Pro licence (`ttyreel license <key>`) removes it and supports development: **[ttyreel Pro on Polar](https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1)**. Everything else is free.
+- Third-party notices (colour schemes, dependencies): [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## 📄 License
 
-Distributed under the MIT License. See `LICENSE` for details.
+MIT, see [LICENSE](LICENSE).

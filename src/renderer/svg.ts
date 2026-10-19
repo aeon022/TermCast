@@ -1,10 +1,16 @@
-import { RenderOptions, TerminalFrame, ThemeName, GradientPreset, Frame, Cell } from '../types';
+import { RenderOptions, TerminalFrame, ThemeName, ThemeColors, GradientPreset, Frame, Cell } from '../types';
 import { THEMES, GRADIENTS, gradientStops } from '../themes';
 import { parseAnsiToStyledSpans, escapeXml } from '../parser';
 
 // How long the last recorded frame stays on screen before a looping playback
 // wraps back to frame 0. Shared by the animated-SVG path (animation duration
 // padding) and the GIF path (last frame's delay).
+/** CSS font stack for the terminal text; a custom family goes first, the rest is the fallback. */
+export function fontStack(options: RenderOptions): string {
+  const family = (options.fontFamily || '').replace(/[^A-Za-z0-9 _.-]/g, '').trim();
+  return (family ? `'${family}', ` : '') + "Menlo, Monaco, 'Courier New', monospace";
+}
+
 /**
  * Shortens a window title so it stays between the traffic lights (left) and the right edge: roughly
  * 7px per character at the title font size, with 110px reserved on each side. Newlines become spaces.
@@ -73,7 +79,7 @@ export function renderSvgFrame(frames: TerminalFrame[], options: RenderOptions =
     });
 
     const animClass = isAnimated ? `class="animated-line line-${index}"` : '';
-    textSvgLines += `    <text x="${termX + 20}" y="${yPos}" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="${fontSize}px" ${animClass}>${lineInnerSvg}</text>\n`;
+    textSvgLines += `    <text x="${termX + 20}" y="${yPos}" font-family="${fontStack(options)}" font-size="${fontSize}px" ${animClass}>${lineInnerSvg}</text>\n`;
   });
 
   // Calculate cursor placement right after last character on last line
@@ -162,6 +168,13 @@ ${cursorSvg}  </g>
 </svg>`;
 }
 
+// Symbols outside the monospace font (ℹ, ⚡ …) come from a fallback font in image renderers; as their own run
+// they cannot change the font of the surrounding text.
+const isSymbol = (ch: string): boolean => {
+  const cp = ch.codePointAt(0) || 0;
+  return cp >= 0x2100 && !(cp >= 0x2500 && cp <= 0x259f);
+};
+
 function cellsToTspans(row: Cell[]): string {
   let out = '';
   let i = 0;
@@ -171,6 +184,8 @@ function cellsToTspans(row: Cell[]): string {
     let j = i + 1;
     while (
       j < row.length &&
+      !isSymbol(cell.char) &&
+      !isSymbol(row[j].char) &&
       row[j].fg === cell.fg &&
       row[j].bg === cell.bg &&
       !!row[j].bold === !!cell.bold &&
@@ -208,7 +223,7 @@ function computeChromeGeometry(cols: number, rows: number, options: RenderOption
   const fontSize = options.fontSize || 14;
   const lineHeight = Math.round(fontSize * 1.45);
   const padding = options.padding || 35;
-  const titleBarHeight = 36;
+  const titleBarHeight = options.windowless ? 0 : 36;
   const charWidth = fontSize * 0.62;
 
   const contentWidth = Math.max(680, cols * charWidth);
@@ -244,6 +259,14 @@ function buildChrome(
 
   const stops = gradientStops(gradientCss, theme.colors.blue, theme.colors.magenta);
 
+  const titleBarSvg = options.windowless ? '' : `
+    <path d="M${termX} ${termY + 10} C${termX} ${termY + 4} ${termX + 4} ${termY} ${termX + 10} ${termY} L${termX + termW - 10} ${termY} C${termX + termW - 4} ${termY} ${termX + termW} ${termY + 4} ${termX + termW} ${termY + 10} L${termX + termW} ${termY + titleBarHeight} L${termX} ${termY + titleBarHeight} Z" fill="${theme.titleBar}"/>
+    <circle cx="${termX + 18}" cy="${termY + 18}" r="6" fill="#FF5F56"/>
+    <circle cx="${termX + 38}" cy="${termY + 18}" r="6" fill="#FFBD2E"/>
+    <circle cx="${termX + 58}" cy="${termY + 18}" r="6" fill="#27C93F"/>
+    <text x="${termX + termW / 2}" y="${termY + 22}" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="12px" font-weight="600" fill="${theme.foreground}" opacity="0.75">${escapeXml(fitTitle(windowTitle, termW))}</text>
+`;
+
   const watermarkSvg = showWatermark ? `
     <g transform="translate(${width - 210}, ${height - 15})">
       <text font-family="-apple-system, system-ui, sans-serif" font-size="11px" fill="#888888">
@@ -266,11 +289,7 @@ ${stops}
   <rect width="${width}" height="${height}" fill="url(#bgGrad)" rx="12"/>
   <g filter="url(#shadow)">
     <rect x="${termX}" y="${termY}" width="${termW}" height="${termH}" rx="10" fill="${theme.background}"/>
-    <path d="M${termX} ${termY + 10} C${termX} ${termY + 4} ${termX + 4} ${termY} ${termX + 10} ${termY} L${termX + termW - 10} ${termY} C${termX + termW - 4} ${termY} ${termX + termW} ${termY + 4} ${termX + termW} ${termY + 10} L${termX + termW} ${termY + titleBarHeight} L${termX} ${termY + titleBarHeight} Z" fill="${theme.titleBar}"/>
-    <circle cx="${termX + 18}" cy="${termY + 18}" r="6" fill="#FF5F56"/>
-    <circle cx="${termX + 38}" cy="${termY + 18}" r="6" fill="#FFBD2E"/>
-    <circle cx="${termX + 58}" cy="${termY + 18}" r="6" fill="#27C93F"/>
-    <text x="${termX + termW / 2}" y="${termY + 22}" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="12px" font-weight="600" fill="${theme.foreground}" opacity="0.75">${escapeXml(fitTitle(windowTitle, termW))}</text>
+${titleBarSvg}
   </g>
   <g xml:space="preserve">
 ${bodyContent}  </g>
@@ -278,11 +297,11 @@ ${bodyContent}  </g>
 </svg>`;
 }
 
-function renderFrameLines(frame: Frame, geom: ChromeGeometry): string {
+function renderFrameLines(frame: Frame, geom: ChromeGeometry, options: RenderOptions = {}): string {
   let lines = '';
   frame.grid.forEach((row, index) => {
     const yPos = geom.termY + geom.titleBarHeight + 24 + (index * geom.lineHeight);
-    lines += `    <text x="${geom.termX + 20}" y="${yPos}" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="${geom.fontSize}px">${cellsToTspans(row)}</text>\n`;
+    lines += `    <text x="${geom.termX + 20}" y="${yPos}" font-family="${fontStack(options)}" font-size="${geom.fontSize}px">${cellsToTspans(row)}</text>\n`;
   });
   return lines;
 }
@@ -291,12 +310,12 @@ function renderFrameLines(frame: Frame, geom: ChromeGeometry): string {
 // static SVG — this is the grid-driven equivalent of the existing
 // text-based renderSvgFrame, used for real recordings instead of demo's
 // synthetic TerminalFrame text.
-export function renderGridFrame(frame: Frame, options: RenderOptions = {}): string {
+function renderGridFrameBase(frame: Frame, options: RenderOptions = {}): string {
   const showWatermark = options.watermark !== false;
   const cols = frame.grid[0]?.length || 80;
   const rows = frame.grid.length;
   const geom = computeChromeGeometry(cols, rows, options, showWatermark);
-  const body = renderFrameLines(frame, geom);
+  const body = renderFrameLines(frame, geom, options);
   return buildChrome(geom, options, body, '', showWatermark);
 }
 
@@ -305,7 +324,7 @@ export function renderGridFrame(frame: Frame, options: RenderOptions = {}): stri
 // keyframes keyed to the frame's timestamp as a % of total duration), so
 // playback matches the actual recording instead of simulating typing over
 // static final output.
-export function renderAnimatedGridFrames(frames: Frame[], options: RenderOptions = {}): string {
+function renderAnimatedGridFramesBase(frames: Frame[], options: RenderOptions = {}): string {
   if (frames.length === 0) {
     throw new Error('renderAnimatedGridFrames requires at least one frame');
   }
@@ -323,12 +342,12 @@ export function renderAnimatedGridFrames(frames: Frame[], options: RenderOptions
   const animDurationMs = totalDurationMs + FINAL_FRAME_HOLD_MS;
 
   let framesBody = '';
-  let styles = `<style>.rec-frame { opacity: 0; animation-duration: ${animDurationMs}ms; animation-iteration-count: infinite; animation-timing-function: steps(1, end); }</style>\n`;
+  let styles = `<style>.rec-frame { opacity: 0; animation-duration: ${animDurationMs}ms; animation-iteration-count: ${options.loop === false ? '1; animation-fill-mode: forwards' : 'infinite'}; animation-timing-function: steps(1, end); }</style>\n`;
 
   frames.forEach((frame, i) => {
     const startPct = (frame.timestampMs / animDurationMs) * 100;
     const isLast = i === frames.length - 1;
-    const lines = renderFrameLines(frame, geom);
+    const lines = renderFrameLines(frame, geom, options);
     framesBody += `    <g class="rec-frame" style="animation-name: frame-${i};">\n${lines}    </g>\n`;
 
     if (isLast) {
@@ -341,4 +360,50 @@ export function renderAnimatedGridFrames(frames: Frame[], options: RenderOptions
   });
 
   return buildChrome(geom, options, framesBody, styles, showWatermark);
+}
+
+/**
+ * Merges two renderings of the same recording into one SVG that follows the viewer's colour scheme
+ * (GitHub, browsers with a dark or light theme). Both share size and layout; ids of the light copy are made
+ * unique so the gradients and shadows do not collide.
+ */
+export function combineLightDark(darkSvg: string, lightSvg: string): string {
+  const open = /^<svg[^>]*>/m;
+  const head = darkSvg.match(open);
+  if (!head) throw new Error('Unexpected SVG: no root element');
+  const inner = (svg: string) => svg.replace(/^<\?xml[^>]*>\s*/, '').replace(open, '').replace(/<\/svg>\s*$/, '');
+  const light = inner(lightSvg).replace(/id="([A-Za-z0-9_-]+)"/g, 'id="$1-light"').replace(/url\(#([A-Za-z0-9_-]+)\)/g, 'url(#$1-light)');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+${head[0]}
+  <style>.ttyreel-light{display:none}@media (prefers-color-scheme: light){.ttyreel-dark{display:none}.ttyreel-light{display:inline}}</style>
+  <g class="ttyreel-dark">${inner(darkSvg)}</g>
+  <g class="ttyreel-light">${light}</g>
+</svg>`;
+}
+
+/** Re-colours a recording made with one theme for another: default text/background and the 8 ANSI colours are swapped, other colours stay. */
+export function remapTheme(frames: Frame[], from: ThemeColors, to: ThemeColors): Frame[] {
+  const map = new Map<string, string>();
+  const put = (a: string, b: string) => { if (!map.has(a.toLowerCase())) map.set(a.toLowerCase(), b); };
+  put(from.foreground, to.foreground);
+  put(from.background, to.background);
+  for (const k of Object.keys(from.colors) as (keyof ThemeColors['colors'])[]) put(from.colors[k], to.colors[k]);
+  const swap = (c: string) => map.get(c.toLowerCase()) || c;
+  return frames.map((f) => ({ ...f, grid: f.grid.map((row) => row.map((cell) => ({ ...cell, fg: swap(cell.fg), bg: swap(cell.bg) }))) }));
+}
+
+function withLightTheme(frames: Frame[], render: (frames: Frame[], o: RenderOptions) => string, options: RenderOptions): string {
+  if (!options.lightTheme) return render(frames, options);
+  const base = { ...options, lightTheme: undefined };
+  const from = THEMES[(options.theme || 'dracula') as ThemeName] || THEMES.dracula;
+  const to = THEMES[options.lightTheme] || THEMES.dracula;
+  return combineLightDark(render(frames, base), render(remapTheme(frames, from, to), { ...base, theme: options.lightTheme }));
+}
+
+export function renderGridFrame(frame: Frame, options: RenderOptions = {}): string {
+  return withLightTheme([frame], (f, o) => renderGridFrameBase(f[0], o), options);
+}
+
+export function renderAnimatedGridFrames(frames: Frame[], options: RenderOptions = {}): string {
+  return withLightTheme(frames, (f, o) => renderAnimatedGridFramesBase(f, o), options);
 }

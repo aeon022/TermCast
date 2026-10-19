@@ -24,7 +24,7 @@ function ensureSpawnHelperExecutable(): void {
   }
 }
 
-function snapshotFrame(term: Terminal, themeName: ThemeName, timestampMs: number): Frame {
+export function snapshotFrame(term: Terminal, themeName: ThemeName, timestampMs: number): Frame {
   const theme = THEMES[themeName] || THEMES.dracula;
   const buffer = term.buffer.active;
   const grid: Cell[][] = [];
@@ -59,86 +59,129 @@ function snapshotFrame(term: Terminal, themeName: ThemeName, timestampMs: number
   };
 }
 
-// Records the real-time output of cmdString in a pseudoterminal, sampling
-// the terminal grid at a fixed rate (options.fps) into a Frame timeline.
-// Always captures one immediate frame at t=0 in addition to the interval
-// samples, so a command that exits before the first sample tick still
-// produces real output instead of zero frames. Stops at whichever comes
-// first: the process exiting, or options.maxDurationMs elapsing (in which
-// case the process is killed and a warning is printed).
-export function recordCommand(cmdString: string, options: RecordOptions = {}): Promise<RecordResult> {
+/** One command of a recorded session. */
+export interface Step {
+  cmd: string;
+  /** typed instead of `cmd` (a demo can show a short command while running something else) */
+  show?: string;
+  /** show the prompt and type the command before running it (default: the session's `typing`) */
+  type?: boolean;
+  /** milliseconds to wait after the output before the next step */
+  pause?: number;
+}
+
+export interface SessionOptions extends RecordOptions {
+  typing?: boolean;
+  /** milliseconds per typed character (default 45) */
+  typeSpeedMs?: number;
+  /** a prompt style (zsh, bash, starship, none) or a literal prompt string */
+  prompt?: string;
+}
+
+const PROMPTS: Record<string, string> = {
+  zsh: '\x1b[1;32m➜\x1b[0m  \x1b[36m~\x1b[0m ',
+  bash: '\x1b[1;32muser@host\x1b[0m:\x1b[1;34m~\x1b[0m$ ',
+  starship: '\x1b[1;34m~\x1b[0m \x1b[1;32m❯\x1b[0m ',
+  none: ''
+};
+
+export function promptString(style: string | undefined): string {
+  if (style === undefined) return PROMPTS.zsh;
+  return Object.prototype.hasOwnProperty.call(PROMPTS, style) ? PROMPTS[style] : style;
+}
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// Records a session of one or more commands in a single terminal: for every step the prompt and the typed
+// command can be shown (typing simulated character by character), then the command runs in a
+// pseudoterminal and its real output is added below. The terminal grid is sampled at a fixed rate
+// (options.fps) into a Frame timeline. A frame is always captured at t=0, so a command that exits before
+// the first sample tick still produces output. The whole session stops at options.maxDurationMs: the running
+// process is killed and a warning is printed.
+export function recordSession(steps: Step[], options: SessionOptions = {}): Promise<RecordResult> {
   const cols = options.cols || DEFAULT_COLS;
   const rows = options.rows || DEFAULT_ROWS;
   const fps = options.fps || DEFAULT_FPS;
   const maxDurationMs = options.maxDurationMs || DEFAULT_MAX_DURATION_MS;
   const themeName = options.theme || 'dracula';
+  const typeSpeed = options.typeSpeedMs ?? 45;
+  const prompt = promptString(options.prompt);
 
   return new Promise((resolve, reject) => {
     const term = new Terminal({ cols, rows, allowProposedApi: true });
-    const shell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/sh');
-    const shellArgs = process.platform === 'win32' ? ['-Command', cmdString] : ['-c', cmdString];
-
-    let ptyProcess: pty.IPty;
-    try {
-      ensureSpawnHelperExecutable();
-      ptyProcess = pty.spawn(shell, shellArgs, {
-        name: 'xterm-256color',
-        cols,
-        rows,
-        env: { ...process.env, FORCE_COLOR: '1' } as { [key: string]: string }
-      });
-    } catch (err) {
-      reject(err);
-      return;
-    }
-
     const frames: Frame[] = [];
     let rawText = '';
     const startedAt = Date.now();
-    let finished = false;
+    let current: pty.IPty | undefined;
     let lastWritePending: Promise<void> = Promise.resolve();
+    let stopped = false;
 
-    frames.push(snapshotFrame(term, themeName, 0));
+    const snap = () => frames.push(snapshotFrame(term, themeName, Date.now() - startedAt));
+    const write = (data: string) => {
+      rawText += data;
+      lastWritePending = new Promise((res) => term.write(data, () => res()));
+    };
 
-    const sampleInterval = setInterval(() => {
-      frames.push(snapshotFrame(term, themeName, Date.now() - startedAt));
-    }, Math.max(1, Math.round(1000 / fps)));
-
-    const maxDurationTimer = setTimeout(() => {
-      if (finished) return;
+    snap();
+    const sampleInterval = setInterval(snap, Math.max(1, Math.round(1000 / fps)));
+    const limit = setTimeout(() => {
+      if (stopped) return;
+      stopped = true;
       console.warn(`[ttyreel] Recording stopped at ${maxDurationMs / 1000}s limit — the command may still have been running.`);
-      finish();
+      try { current?.kill(); } catch { /* already gone */ }
     }, maxDurationMs);
 
-    function finish(): void {
-      if (finished) return;
-      finished = true;
-      clearInterval(sampleInterval);
-      clearTimeout(maxDurationTimer);
-      // Wait for the last term.write() to flush into the buffer before
-      // snapshotting — @xterm/headless's write() is asynchronous, so an
-      // exit-triggered snapshot taken synchronously can race ahead of the
-      // final chunk of output still being parsed into the buffer.
-      lastWritePending.then(() => {
-        frames.push(snapshotFrame(term, themeName, Date.now() - startedAt));
-        try {
-          ptyProcess.kill();
-        } catch {
-          // already exited — killing an exited process throws, that's fine
+    const run = async () => {
+      for (let i = 0; i < steps.length && !stopped; i++) {
+        const step = steps[i];
+        const typed = step.type ?? options.typing ?? false;
+        if (typed) {
+          write(prompt);
+          for (const ch of Array.from(step.show ?? step.cmd)) {
+            if (stopped) break;
+            write(ch);
+            await sleep(typeSpeed ? typeSpeed + Math.round(Math.random() * typeSpeed * 0.4) : 0);
+          }
+          await sleep(typeSpeed ? 250 : 0);
+          write('\r\n');
         }
-        resolve({ frames, rawText });
-      });
-    }
+        if (stopped) break;
+        await new Promise<void>((done) => {
+          const shell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/sh');
+          const args = process.platform === 'win32' ? ['-Command', step.cmd] : ['-c', step.cmd];
+          try {
+            ensureSpawnHelperExecutable();
+            current = pty.spawn(shell, args, { name: 'xterm-256color', cols, rows, env: { ...process.env, FORCE_COLOR: '1' } as { [key: string]: string } });
+          } catch (err) {
+            reject(err);
+            stopped = true;
+            return done();
+          }
+          current.onData(write);
+          current.onExit(() => done());
+        });
+        await lastWritePending;
+        if (step.pause && !stopped) await sleep(step.pause);
+      }
+    };
 
-    ptyProcess.onData((data) => {
-      rawText += data;
-      lastWritePending = new Promise((res) => {
-        term.write(data, () => res());
-      });
-    });
-
-    ptyProcess.onExit(() => {
-      finish();
+    run().then(async () => {
+      stopped = true;
+      clearInterval(sampleInterval);
+      clearTimeout(limit);
+      await lastWritePending;
+      snap();
+      try { current?.kill(); } catch { /* already exited */ }
+      resolve({ frames, rawText });
+    }, (err) => {
+      clearInterval(sampleInterval);
+      clearTimeout(limit);
+      reject(err);
     });
   });
+}
+
+// Records one command (no prompt, no typing): the original single-command entry point.
+export function recordCommand(cmdString: string, options: RecordOptions = {}): Promise<RecordResult> {
+  return recordSession([{ cmd: cmdString }], { ...options, typing: false, prompt: 'none' });
 }

@@ -1,6 +1,7 @@
 import { RenderOptions, TerminalFrame, ThemeName } from '../types';
 import { THEMES, GRADIENTS } from '../themes';
 import { parseAnsiToStyledSpans, escapeXml } from '../parser';
+import { fontStack } from './svg';
 
 export function renderHtmlEmbed(frames: TerminalFrame[], options: RenderOptions = {}): string {
   const themeName = (options.theme || 'dracula') as ThemeName;
@@ -98,7 +99,7 @@ export function renderHtmlEmbed(frames: TerminalFrame[], options: RenderOptions 
     .ttyreel-copy:hover { background: rgba(255,255,255,0.25); }
     .ttyreel-body {
       padding: 20px;
-      font-family: Menlo, Monaco, 'Courier New', monospace;
+      font-family: ${fontStack(options)};
       font-size: 14px;
       line-height: 1.5;
       overflow-x: auto;
@@ -126,14 +127,14 @@ export function renderHtmlEmbed(frames: TerminalFrame[], options: RenderOptions 
 <body>
 
 <div class="ttyreel-card">
-  <div class="ttyreel-header">
-    <div class="ttyreel-dots">
+  <div class="ttyreel-header"${options.windowless ? ' style="background: transparent; justify-content: flex-end;"' : ''}>
+${options.windowless ? '' : `    <div class="ttyreel-dots">
       <div class="dot red"></div>
       <div class="dot yellow"></div>
       <div class="dot green"></div>
     </div>
     <div class="ttyreel-title">${escapeXml(windowTitle)}</div>
-    <button class="ttyreel-copy" onclick="copyCode()">Copy</button>
+`}    <button class="ttyreel-copy" onclick="copyCode()">Copy</button>
   </div>
   <div class="ttyreel-body">
 ${linesHtml}  </div>

@@ -1,32 +1,56 @@
 {
   "name": "ttyreel",
-  "version": "0.1.0",
-  "description": "Pretty Terminal SVG & GIF Studio CLI for GitHub READMEs and Demos by abteilung83",
+  "version": "0.2.0",
+  "description": "Turn terminal output into polished SVG, GIF, PNG and HTML: record a command, type and script demos, import asciinema casts. Masks secrets automatically.",
+  "keywords": [
+    "terminal",
+    "cli",
+    "svg",
+    "gif",
+    "png",
+    "screenshot",
+    "screencast",
+    "asciinema",
+    "readme",
+    "demo",
+    "recorder",
+    "terminal-to-svg",
+    "terminal-to-gif",
+    "redact",
+    "developer-tools"
+  ],
+  "homepage": "https://github.com/aeon022/ttyreel#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aeon022/ttyreel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aeon022/ttyreel/issues"
+  },
+  "author": "abteilung83 <hello@abteilung83.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "main": "dist/index.js",
   "bin": {
     "ttyreel": "dist/index.js"
   },
   "files": [
     "dist/**/*",
-    "README.md"
+    "!dist/**/*.test.js",
+    "!dist/**/*.test.d.ts",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "action.yml"
   ],
   "scripts": {
     "build": "tsc",
-    "test": "tsc && node --test dist/*.test.js dist/renderer/*.test.js test/license.test.js",
+    "test": "tsc && node --test dist/*.test.js dist/renderer/*.test.js test/license.test.js test/cli.test.js",
     "watch": "tsc -w",
     "start": "ts-node src/index.ts"
   },
-  "keywords": [
-    "cli",
-    "terminal",
-    "svg",
-    "gif",
-    "developer-tools",
-    "readme",
-    "abteilung83"
-  ],
-  "author": "abteilung83",
-  "license": "MIT",
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
     "@xterm/headless": "^6.0.0",
@@ -34,12 +58,14 @@
     "commander": "^12.0.0",
     "fs-extra": "^11.2.0",
     "gifenc": "^1.0.3",
+    "js-yaml": "^5.5.0",
     "node-fetch": "^2.7.0",
     "node-pty": "^1.1.0",
     "ora": "^5.4.1"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.11.0",
     "@types/node-fetch": "^2.6.11",
     "ts-node": "^10.9.2",

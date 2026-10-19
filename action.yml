@@ -1,0 +1,53 @@
+name: ttyreel
+description: Render a command's output or a demo script to SVG, GIF, PNG or HTML (for READMEs that stay up to date)
+author: abteilung83
+branding:
+  icon: film
+  color: purple
+inputs:
+  command:
+    description: Command to record (use this or `script`)
+    required: false
+  script:
+    description: Path to a YAML/JSON demo script for `ttyreel play` (use this or `command`)
+    required: false
+  output:
+    description: Output path without extension
+    required: false
+    default: docs/demo
+  format:
+    description: svg, html, gif, png, both, all (comma-separated to combine)
+    required: false
+    default: svg
+  args:
+    description: Extra ttyreel options, e.g. "--theme nord --animated --light-theme github-light"
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+    - name: Install ttyreel
+      shell: bash
+      run: cd "$GITHUB_ACTION_PATH" && npm install --omit=dev --no-audit --no-fund
+    - name: Render
+      shell: bash
+      env:
+        INPUT_COMMAND: ${{ inputs.command }}
+        INPUT_SCRIPT: ${{ inputs.script }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_ARGS: ${{ inputs.args }}
+      run: |
+        set -euo pipefail
+        bin="node $GITHUB_ACTION_PATH/dist/index.js"
+        if [ -n "$INPUT_SCRIPT" ]; then
+          $bin play "$INPUT_SCRIPT" -o "$INPUT_OUTPUT" --format "$INPUT_FORMAT" $INPUT_ARGS
+        elif [ -n "$INPUT_COMMAND" ]; then
+          $bin render "$INPUT_COMMAND" -o "$INPUT_OUTPUT" --format "$INPUT_FORMAT" $INPUT_ARGS
+        else
+          echo "Give either 'command' or 'script'." >&2
+          exit 1
+        fi

@@ -1,26 +1,137 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import * as fs from 'fs-extra';
+import * as fs from 'fs';
 import * as path from 'path';
-import { renderSvgFrame, renderGridFrame, renderAnimatedGridFrames } from './renderer/svg';
-import { renderHtmlEmbed } from './renderer/html';
-import { cropBlankRows } from './crop';
-import { startPreviewServer } from './server';
 import { validatePolarLicense, saveLicenseKey, clearSavedLicense, getSavedLicenseKey, maskKey } from './license';
-import { recordCommand } from './recorder';
-import { encodeGif } from './gif';
-import { RenderOptions, TerminalFrame, ThemeName, GradientPreset, PromptStyle } from './types';
+import { recordSession, Step } from './recorder';
+import { THEMES, GRADIENTS, registerThemeFile } from './themes';
+import { loadScript } from './script';
+import { loadCastFrames } from './cast';
+import { parseFormats, parseLineRange, writeOutputs, OutputSettings } from './pipeline';
+import { startPreviewServer } from './server';
+import { renderAnimatedGridFrames, renderGridFrame } from './renderer/svg';
+import { cropBlankRows } from './crop';
+import { redactFrames } from './redact';
+import { applySpeed } from './pipeline';
+import { Frame, RenderOptions } from './types';
 
+const BUY_URL = 'https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1';
 const shellName = path.basename(process.env.SHELL || 'sh');
 
 const program = new Command();
-
 program
   .name('ttyreel')
-  .description('Pretty Terminal SVG & GIF Studio CLI for GitHub READMEs and Demos')
-  .version('0.1.0');
+  .description('Turn terminal output into polished SVG, GIF, PNG and HTML: recorded, typed, scripted or imported from asciinema')
+  .version('0.2.0');
 
-// License Management Command
+const fail = (err: any, what = 'Error') => {
+  process.exitCode = 1;
+  console.error(`[ttyreel] ${what}: ${err.message || err}`);
+};
+
+// ── shared options ────────────────────────────────────────────────────────────
+
+function styleOptions(cmd: Command): Command {
+  return cmd
+    .option('-t, --theme <name>', `Theme: ${Object.keys(THEMES).join(', ')}`, 'dracula')
+    .option('--theme-file <path>', 'Use your own theme from a JSON file (see the README)')
+    .option('--light-theme <name>', 'SVG only: also draw this theme and switch to it when the viewer prefers a light colour scheme')
+    .option('-g, --gradient <name>', `Background gradient: ${Object.keys(GRADIENTS).join(', ')} (default: the theme's own)`)
+    .option('--title <title>', 'Window title bar text')
+    .option('--font <family>', 'Font family for the terminal text (SVG/HTML; GIF and PNG use the installed monospace font)')
+    .option('--font-size <px>', 'Font size in pixels', '14')
+    .option('--padding <px>', 'Space around the window in pixels', '35')
+    .option('--no-window', 'No title bar and traffic lights: just the terminal');
+}
+
+function outputOptions(cmd: Command, defaultOutput: string): Command {
+  return cmd
+    .option('-o, --output <path>', 'Output path without extension (an extension is ignored)', defaultOutput)
+    .option('--format <list>', 'svg, html, gif, png, both (svg+html), all; comma-separated to combine', 'svg')
+    .option('--animated', 'SVG: play back the recorded frames as an animation')
+    .option('--no-loop', 'Animations (SVG, GIF) play once instead of repeating')
+    .option('--scale <n>', 'Pixel scale for GIF and PNG (2 = sharp on retina screens)', '1')
+    .option('--speed <n>', 'Playback speed: 2 = twice as fast, 0.5 = half speed', '1')
+    .option('--lines <from-to>', 'Only draw these lines of the screen, e.g. 3-8')
+    .option('--redact <regex...>', 'Also mask everything matching these regular expressions')
+    .option('--no-redact', 'Do not mask tokens, keys and passwords automatically')
+    .option('--markdown', 'Print a Markdown image line for the first file written')
+    .option('-l, --license <key>', 'Polar.sh Pro License Key');
+}
+
+function recordingOptions(cmd: Command): Command {
+  return cmd
+    .option('--fps <n>', 'Frames sampled per second while recording', '10')
+    .option('--max-duration <seconds>', 'Stop recording after this many seconds', '30')
+    .option('--cols <n>', 'Terminal columns', '80')
+    .option('--rows <n>', 'Terminal rows', '24')
+    .option('--type', 'Show the prompt and type the command before running it')
+    .option('--type-speed <ms>', 'Milliseconds per typed character', '45')
+    .option('--prompt <style>', 'Prompt for typed commands: zsh, bash, starship, none, or your own text', 'zsh');
+}
+
+const int = (v: any, name: string, min: number, max: number): number => {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < min || n > max) throw new Error(`--${name} must be a number between ${min} and ${max}`);
+  return n;
+};
+
+/** Everything the look of the output depends on, validated. `scriptDefaults` fill what the flags left at their defaults. */
+function renderSettings(opts: any, cmd: Command, licensed: boolean, scriptDefaults: { theme?: string; themeFile?: string; gradient?: string; title?: string } = {}): RenderOptions {
+  const fromCli = (name: string) => cmd.getOptionValueSource(name) === 'cli';
+  const themeFile = opts.themeFile ?? scriptDefaults.themeFile;
+  let theme: string = fromCli('theme') || !scriptDefaults.theme ? opts.theme : scriptDefaults.theme;
+  if (themeFile) theme = registerThemeFile(themeFile);
+  if (!THEMES[theme]) throw new Error(`Unknown theme "${theme}". Available: ${Object.keys(THEMES).join(', ')}`);
+  const lightTheme: string | undefined = opts.lightTheme;
+  if (lightTheme && !THEMES[lightTheme]) throw new Error(`Unknown light theme "${lightTheme}". Available: ${Object.keys(THEMES).join(', ')}`);
+  const gradient = opts.gradient ?? scriptDefaults.gradient;
+  if (gradient && !(gradient in GRADIENTS)) throw new Error(`Unknown gradient "${gradient}". Available: ${Object.keys(GRADIENTS).join(', ')}`);
+  return {
+    theme,
+    lightTheme,
+    gradient: gradient as any,
+    title: opts.title ?? scriptDefaults.title,
+    fontFamily: opts.font,
+    fontSize: int(opts.fontSize, 'font-size', 8, 40),
+    padding: int(opts.padding, 'padding', 0, 200),
+    windowless: opts.window === false,
+    watermark: !licensed
+  };
+}
+
+function outputSettings(opts: any, render: RenderOptions, fps: number): OutputSettings {
+  const extra = (opts.redact === true ? [] : opts.redact || []) as string[];
+  return {
+    output: opts.output,
+    formats: parseFormats(opts.format),
+    animated: Boolean(opts.animated),
+    scale: int(opts.scale, 'scale', 0.25, 8),
+    loop: opts.loop !== false,
+    speed: Number(opts.speed),
+    lines: opts.lines ? parseLineRange(opts.lines) : undefined,
+    fps,
+    redact: { auto: opts.redact !== false, extra: extra.map((p) => new RegExp(p, 'g')) },
+    render
+  };
+}
+
+async function finish(frames: Frame[], rawText: string | undefined, settings: OutputSettings, opts: any, licensed: boolean): Promise<void> {
+  const result = await writeOutputs(frames, rawText, settings);
+  for (const file of result.files) console.log(`  ✨ Created ${path.extname(file).slice(1).toUpperCase()}: ${file}`);
+  if (result.redacted > 0) console.error(`[ttyreel] ${result.redacted} secret${result.redacted === 1 ? '' : 's'} masked in the output (--no-redact turns this off).`);
+  if (opts.markdown) console.log(`![${settings.render.title || 'terminal'}](${path.relative(process.cwd(), result.files[0]) || result.files[0]})`);
+  if (!licensed) console.error(`\n💡 Support development and remove the watermark: ${BUY_URL}`);
+}
+
+async function license(opts: any): Promise<boolean> {
+  const check = await validatePolarLicense(opts.license);
+  console.error(`[ttyreel] License Status: ${check.message}`);
+  return check.valid;
+}
+
+// ── license ───────────────────────────────────────────────────────────────────
+
 program
   .command('license [key]')
   .description('Activate, check, or clear Polar.sh Pro license key')
@@ -33,7 +144,6 @@ program
         console.log('[ttyreel] Saved license key cleared. Switched to Free Tier.');
         return;
       }
-
       if (key) {
         console.log('[ttyreel] Validating license key...');
         const result = await saveLicenseKey(key);
@@ -41,199 +151,164 @@ program
           console.log(`\n✨ ${result.message}`);
           console.log('   License successfully activated and saved locally!\n');
         } else {
+          process.exitCode = 1;
           console.error(`\n❌ ${result.message}`);
-          console.error('   Please verify your key at https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1\n');
+          console.error(`   Please verify your key at ${BUY_URL}\n`);
         }
         return;
       }
-
-      // Check current status
       const activeKey = await getSavedLicenseKey();
       const result = await validatePolarLicense(activeKey);
       console.log('\n[ttyreel] License Status:');
       console.log(`  State : ${result.valid ? 'PRO ACTIVE ✓' : 'FREE TIER'}`);
       console.log(`  Key   : ${activeKey ? maskKey(activeKey) : 'None'}`);
       console.log(`  Info  : ${result.message}`);
-      if (!result.valid) {
-        console.log('\n💡 Buy Pro License: https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1\n');
-      }
+      if (!result.valid) console.log(`\n💡 Buy Pro License: ${BUY_URL}\n`);
     } catch (err: any) {
-      process.exitCode = 1;
-      console.error(`[ttyreel] License error: ${err.message}`);
+      fail(err, 'License error');
     }
   });
 
-// Demo Command
-program
-  .command('demo')
-  .description('Generate a quick demo SVG showcasing ttyreel styling and animation')
-  .option('-t, --theme <name>', 'Theme: dracula, tokyonight, nord, catppuccin, monokai', 'dracula')
-  .option('-g, --gradient <name>', 'Gradient: default, cyberpunk, sunset, matrix, hyper, neon, midnight', 'cyberpunk')
-  .option('-o, --output <path>', 'Output filepath', 'ttyreel-demo')
-  .option('--animated', 'Enable CSS typing keyframe animation')
-  .option('--prompt <style>', 'Prompt style: zsh, starship, bash, none', 'zsh')
-  .option('--format <type>', 'Output format: svg, html, both', 'svg')
-  .option('-l, --license <key>', 'Polar.sh Pro License Key')
-  .action(async (options) => {
+// ── render ────────────────────────────────────────────────────────────────────
+
+recordingOptions(outputOptions(styleOptions(
+  program.command('render <cmd>').description('Run a command and record its real terminal output as SVG, GIF, PNG or HTML')
+), 'terminal-output')).action(async (cmdString: string, opts: any, cmd: Command) => {
+  try {
+    const licensed = await license(opts);
+    const render = renderSettings(opts, cmd, licensed, { title: undefined });
+    render.title = render.title || `${shellName} — ${cmdString}`;
+    const fps = int(opts.fps, 'fps', 1, 60);
+    console.error(`[ttyreel] Recording: "${cmdString}"...`);
+    const rec = await recordSession([{ cmd: cmdString }], {
+      cols: int(opts.cols, 'cols', 20, 300), rows: int(opts.rows, 'rows', 3, 100), fps,
+      maxDurationMs: int(opts.maxDuration, 'max-duration', 1, 600) * 1000, theme: render.theme,
+      typing: Boolean(opts.type), typeSpeedMs: int(opts.typeSpeed, 'type-speed', 0, 1000), prompt: opts.prompt
+    });
+    await finish(rec.frames, rec.rawText, outputSettings(opts, render, fps), opts, licensed);
+  } catch (err) {
+    fail(err);
+  }
+});
+
+// ── play ──────────────────────────────────────────────────────────────────────
+
+recordingOptions(outputOptions(styleOptions(
+  program.command('play <script>').description('Record several commands from a YAML or JSON script (prompt, typing, pauses) into one demo')
+), 'demo')).action(async (file: string, opts: any, cmd: Command) => {
+  try {
+    const licensed = await license(opts);
+    const script = loadScript(file);
+    const render = renderSettings(opts, cmd, licensed, { theme: script.theme, themeFile: script.themeFile, gradient: script.gradient, title: script.title });
+    render.title = render.title || script.title || path.basename(file, path.extname(file));
+    const fromCli = (n: string) => cmd.getOptionValueSource(n) === 'cli';
+    const fps = int(opts.fps, 'fps', 1, 60);
+    console.error(`[ttyreel] Playing ${script.steps.length} step${script.steps.length === 1 ? '' : 's'} from ${file}...`);
+    const rec = await recordSession(script.steps, {
+      cols: fromCli('cols') || !script.cols ? int(opts.cols, 'cols', 20, 300) : script.cols,
+      rows: fromCli('rows') || !script.rows ? int(opts.rows, 'rows', 3, 100) : script.rows,
+      fps, maxDurationMs: int(opts.maxDuration, 'max-duration', 1, 600) * 1000, theme: render.theme,
+      typing: fromCli('type') ? Boolean(opts.type) : script.typing,
+      typeSpeedMs: fromCli('typeSpeed') || script.typeSpeed === undefined ? int(opts.typeSpeed, 'type-speed', 0, 1000) : script.typeSpeed,
+      prompt: fromCli('prompt') || !script.prompt ? opts.prompt : script.prompt
+    });
+    const settings = outputSettings(opts, render, fps);
+    if (cmd.getOptionValueSource('output') !== 'cli') settings.output = path.join(path.dirname(path.resolve(file)), path.basename(file, path.extname(file)));
+    await finish(rec.frames, rec.rawText, settings, opts, licensed);
+  } catch (err) {
+    fail(err);
+  }
+});
+
+// ── cast ──────────────────────────────────────────────────────────────────────
+
+outputOptions(styleOptions(
+  program.command('cast <file>').description('Convert an asciinema recording (.cast, format v2 or v3) to SVG, GIF, PNG or HTML')
+), 'cast-output')
+  .option('--fps <n>', 'Frames sampled per second', '10')
+  .option('--idle-limit <seconds>', 'Shorten pauses longer than this (0 = keep real timing)', '2')
+  .action(async (file: string, opts: any, cmd: Command) => {
     try {
-      const licenseCheck = await validatePolarLicense(options.license);
-      console.log(`[ttyreel] License Status: ${licenseCheck.message}`);
-
-      const sampleFrames: TerminalFrame[] = [
-        { text: '\x1b[32m✔\x1b[0m \x1b[1mmy-app\x1b[0m initialized successfully', delayMs: 100 },
-        { text: '\x1b[36mℹ\x1b[0m Watching local directory: \x1b[34m~/projects/my-app/docs\x1b[0m', delayMs: 200 },
-        { text: '\x1b[33m⚡\x1b[0m Synced \x1b[1m184 notes\x1b[0m in 42ms (0 errors)', delayMs: 300 },
-        { text: '\x1b[32m✔\x1b[0m Output saved to \x1b[35mttyreel-demo.svg\x1b[0m', delayMs: 400 }
-      ];
-
-      const renderOpts: RenderOptions = {
-        theme: options.theme as ThemeName,
-        gradient: options.gradient as GradientPreset,
-        title: 'ttyreel — zsh (demo)',
-        watermark: !licenseCheck.valid,
-        animated: options.animated,
-        prompt: options.prompt as PromptStyle
-      };
-
-      const format = options.format || 'svg';
-      const baseOutput = options.output.replace(/\.(svg|html)$/, '');
-
-      if (format === 'svg' || format === 'both') {
-        const svgContent = renderSvgFrame(sampleFrames, renderOpts);
-        const svgPath = path.resolve(`${baseOutput}.svg`);
-        await fs.writeFile(svgPath, svgContent, 'utf8');
-        console.log(`  ✨ Created SVG: ${svgPath}`);
-      }
-
-      if (format === 'html' || format === 'both') {
-        const htmlContent = renderHtmlEmbed(sampleFrames, renderOpts);
-        const htmlPath = path.resolve(`${baseOutput}.html`);
-        await fs.writeFile(htmlPath, htmlContent, 'utf8');
-        console.log(`  ✨ Created HTML Embed: ${htmlPath}`);
-      }
-
-      console.log('\n[ttyreel] Execution finished successfully.\n');
-      if (!licenseCheck.valid) {
-        console.log('💡 Support development and remove the watermark: https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1');
-      }
-    } catch (err: any) {
-      process.exitCode = 1;
-      console.error(`[ttyreel] Error generating demo: ${err.message}`);
+      const licensed = await license(opts);
+      const render = renderSettings(opts, cmd, licensed);
+      render.title = render.title || path.basename(file, path.extname(file));
+      const fps = int(opts.fps, 'fps', 1, 60);
+      const { frames } = await loadCastFrames(file, { fps, theme: render.theme, idleLimit: int(opts.idleLimit, 'idle-limit', 0, 3600) });
+      await finish(frames, undefined, outputSettings(opts, render, fps), opts, licensed);
+    } catch (err) {
+      fail(err);
     }
   });
 
-// Render Command
-program
-  .command('render <cmd>')
-  .description('Run a command and record its real terminal output as SVG, GIF, or HTML')
-  .option('-t, --theme <name>', 'Theme: dracula, tokyonight, nord, catppuccin, monokai', 'dracula')
-  .option('-g, --gradient <name>', 'Gradient: default, cyberpunk, sunset, matrix, hyper, neon, midnight', 'cyberpunk')
-  .option('-o, --output <path>', 'Output filepath', 'terminal-output')
-  .option('--title <title>', 'Window title bar text (default: the shell and the command)')
+// ── demo ──────────────────────────────────────────────────────────────────────
+
+const DEMO_STEPS: Step[] = [
+  { cmd: "printf '\\033[32m✔\\033[0m \\033[1mmy-app\\033[0m initialized successfully\\n'", show: 'my-app init', type: true, pause: 300 },
+  { cmd: "printf '\\033[36m›\\033[0m Watching \\033[34m~/projects/my-app/docs\\033[0m\\n'", show: 'my-app watch docs', type: true, pause: 400 },
+  { cmd: "printf '\\033[33m⚡\\033[0m Synced \\033[1m184 notes\\033[0m in 42ms (0 errors)\\n'", show: 'my-app sync', type: true, pause: 600 }
+];
+
+recordingOptions(outputOptions(styleOptions(
+  program.command('demo').description('Generate a quick typed demo to see what ttyreel looks like')
+), 'ttyreel-demo')).action(async (opts: any, cmd: Command) => {
+  try {
+    const licensed = await license(opts);
+    const render = renderSettings(opts, cmd, licensed);
+    render.title = render.title || 'ttyreel — demo';
+    const fps = int(opts.fps, 'fps', 1, 60);
+    const rec = await recordSession(DEMO_STEPS, { cols: 64, rows: 8, fps, theme: render.theme, typing: true, typeSpeedMs: int(opts.typeSpeed, 'type-speed', 0, 1000), prompt: opts.prompt });
+    const settings = outputSettings({ ...opts, animated: opts.animated }, render, fps);
+    await finish(rec.frames, rec.rawText, settings, opts, licensed);
+  } catch (err) {
+    fail(err);
+  }
+});
+
+// ── serve ─────────────────────────────────────────────────────────────────────
+
+styleOptions(program.command('serve <cmd>').description('Record a command and open a live preview in the browser (only reachable from this computer)'))
   .option('--animated', 'Play back the real recorded frames as an animated SVG')
-  .option('--format <type>', 'Output format: svg, html, gif, both', 'svg')
-  .option('--fps <n>', 'Frames sampled per second while recording', '10')
-  .option('--max-duration <seconds>', 'Stop recording after this many seconds', '30')
-  .option('--cols <n>', 'Terminal columns to record at', String(process.stdout.columns || 80))
-  .option('--rows <n>', 'Terminal rows to record at', String(process.stdout.rows || 24))
-  .option('-l, --license <key>', 'Polar.sh Pro License Key')
-  .action(async (cmdString, options) => {
+  .option('--port <n>', 'Port to listen on (the next free one is used if it is taken)', '3333')
+  .option('--watch <paths...>', 'Record again whenever a file in these folders or files changes; the browser reloads by itself')
+  .option('--cols <n>', 'Terminal columns', '80')
+  .option('--rows <n>', 'Terminal rows', '24')
+  .option('--no-redact', 'Do not mask tokens, keys and passwords automatically')
+  .action(async (cmdString: string, opts: any, cmd: Command) => {
     try {
-      const licenseCheck = await validatePolarLicense(options.license);
-      console.log(`[ttyreel] License Status: ${licenseCheck.message}`);
-      console.log(`[ttyreel] Recording: "${cmdString}"...`);
-
-      const fps = parseInt(options.fps, 10) || 10;
-      const cols = parseInt(options.cols, 10) || 80;
-      const rows = parseInt(options.rows, 10) || 24;
-      const maxDurationMs = (parseInt(options.maxDuration, 10) || 30) * 1000;
-
-      const recorded = await recordCommand(cmdString, {
-        cols, rows, fps, maxDurationMs, theme: options.theme as ThemeName
-      });
-      const { rawText } = recorded;
-      const frames = cropBlankRows(recorded.frames);
-
-      const renderOpts: RenderOptions = {
-        theme: options.theme as ThemeName,
-        gradient: options.gradient as GradientPreset,
-        title: options.title || `${shellName} — ${cmdString}`,
-        watermark: !licenseCheck.valid
+      const render = renderSettings(opts, cmd, true);
+      render.title = render.title || `${shellName} — ${cmdString}`;
+      const cols = int(opts.cols, 'cols', 20, 300);
+      const rows = int(opts.rows, 'rows', 3, 100);
+      const record = async (): Promise<string> => {
+        console.error(`[ttyreel] Recording: "${cmdString}" for live preview...`);
+        const rec = await recordSession([{ cmd: cmdString }], { cols, rows, fps: 10, maxDurationMs: 30000, theme: render.theme, typing: false, prompt: 'none' });
+        const frames = redactFrames(cropBlankRows(rec.frames), { auto: opts.redact !== false }).frames;
+        return opts.animated ? renderAnimatedGridFrames(frames, render) : renderGridFrame(frames[frames.length - 1], render);
       };
-
-      const format = options.format || 'svg';
-      const baseOutput = options.output.replace(/\.(svg|html|gif)$/, '');
-
-      if (format === 'svg' || format === 'both') {
-        const svgContent = options.animated
-          ? renderAnimatedGridFrames(frames, renderOpts)
-          : renderGridFrame(frames[frames.length - 1], renderOpts);
-        const svgPath = path.resolve(`${baseOutput}.svg`);
-        await fs.writeFile(svgPath, svgContent, 'utf8');
-        console.log(`  ✨ Created SVG: ${svgPath}`);
+      const watching: string[] | undefined = opts.watch;
+      const server = startPreviewServer(await record(), int(opts.port, 'port', 1, 65535), true, Boolean(watching));
+      if (watching && watching.length) {
+        let busy = false;
+        let again = false;
+        let timer: NodeJS.Timeout | undefined;
+        const rerun = async () => {
+          if (busy) { again = true; return; }
+          busy = true;
+          try { server.update(await record()); } catch (err: any) { console.error(`[ttyreel] ${err.message}`); }
+          busy = false;
+          if (again) { again = false; void rerun(); }
+        };
+        for (const p of watching) {
+          fs.watch(p, { recursive: true }, (_evt, name) => {
+            if (name && /(^|[\\/])(node_modules|\.git)([\\/]|$)/.test(String(name))) return;
+            clearTimeout(timer);
+            timer = setTimeout(() => void rerun(), 400);
+          });
+          console.error(`[ttyreel] Watching ${p}`);
+        }
       }
-
-      if (format === 'html' || format === 'both') {
-        // HTML output stays on the original text-based renderer for now —
-        // recordCommand's rawText accumulator exists specifically so this
-        // path keeps working unchanged (see plan Global Constraints).
-        const htmlContent = renderHtmlEmbed(
-          [{ text: rawText, delayMs: 0 }],
-          renderOpts
-        );
-        const htmlPath = path.resolve(`${baseOutput}.html`);
-        await fs.writeFile(htmlPath, htmlContent, 'utf8');
-        console.log(`  ✨ Created HTML Embed: ${htmlPath}`);
-      }
-
-      if (format === 'gif') {
-        const gifBuffer = await encodeGif(frames, renderOpts, fps);
-        const gifPath = path.resolve(`${baseOutput}.gif`);
-        await fs.writeFile(gifPath, gifBuffer);
-        console.log(`  ✨ Created GIF: ${gifPath}`);
-      }
-
-      console.log('\n[ttyreel] Recording finished successfully.\n');
-      if (!licenseCheck.valid) {
-        console.log('💡 Support development and remove the watermark: https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1');
-      }
-    } catch (err: any) {
-      process.exitCode = 1;
-      console.error(`[ttyreel] Error: ${err.message}`);
-    }
-  });
-
-// Serve (Preview) Command
-program
-  .command('serve <cmd>')
-  .description('Record a command and launch an instant live web preview in the browser')
-  .option('-t, --theme <name>', 'Theme: dracula, tokyonight, nord, catppuccin, monokai', 'dracula')
-  .option('-g, --gradient <name>', 'Gradient: default, cyberpunk, sunset, matrix, hyper, neon, midnight', 'cyberpunk')
-  .option('--animated', 'Play back the real recorded frames as an animated SVG')
-  .action(async (cmdString, options) => {
-    try {
-      console.log(`[ttyreel] Recording: "${cmdString}" for live preview...`);
-
-      const cols = process.stdout.columns || 80;
-      const rows = process.stdout.rows || 24;
-      const frames = cropBlankRows((await recordCommand(cmdString, {
-        cols, rows, fps: 10, maxDurationMs: 30000, theme: options.theme as ThemeName
-      })).frames);
-
-      const renderOpts: RenderOptions = {
-        theme: options.theme as ThemeName,
-        gradient: options.gradient as GradientPreset,
-        title: `${shellName} — ${cmdString}`
-      };
-
-      const svg = options.animated
-        ? renderAnimatedGridFrames(frames, renderOpts)
-        : renderGridFrame(frames[frames.length - 1], renderOpts);
-
-      startPreviewServer(svg, 3333);
-    } catch (err: any) {
-      process.exitCode = 1;
-      console.error(`[ttyreel] Preview Error: ${err.message}`);
+    } catch (err) {
+      fail(err, 'Preview Error');
     }
   });
 

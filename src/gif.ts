@@ -6,13 +6,14 @@ import { renderGridFrame, FINAL_FRAME_HOLD_MS } from './renderer/svg';
 import { Frame, RenderOptions } from './types';
 
 const MONOSPACE_FONT_CANDIDATES: Record<string, string[]> = {
-  darwin: ['/System/Library/Fonts/Menlo.ttc', '/System/Library/Fonts/Monaco.ttf'],
+  darwin: ['/System/Library/Fonts/Menlo.ttc', '/System/Library/Fonts/Monaco.ttf', '/System/Library/Fonts/Apple Symbols.ttf', '/System/Library/Fonts/Supplemental/Arial Unicode.ttf'],
   linux: [
     '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',
     '/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf',
-    '/usr/share/fonts/TTF/DejaVuSansMono.ttf'
+    '/usr/share/fonts/TTF/DejaVuSansMono.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
   ],
-  win32: ['C:\\Windows\\Fonts\\consola.ttf', 'C:\\Windows\\Fonts\\cour.ttf']
+  win32: ['C:\\Windows\\Fonts\\consola.ttf', 'C:\\Windows\\Fonts\\cour.ttf', 'C:\\Windows\\Fonts\\seguisym.ttf']
 };
 
 // Resolving fonts via loadSystemFonts is a full system font-database scan
@@ -87,7 +88,14 @@ export function buildEncodableFrames(frames: Frame[]): EncodableFrame[] {
 // sequence into an animated GIF.
 // `fps` is kept for call-site compatibility but no longer sets the playback
 // delay — per-frame delays now come from the recording's real timestamps.
-export async function encodeGif(frames: Frame[], options: RenderOptions, fps: number): Promise<Buffer> {
+export interface EncodeOptions {
+  /** repeat the animation forever (default true); false plays it once */
+  loop?: boolean;
+  /** pixel scale: 2 gives a crisp image for high-resolution screens (default 1) */
+  scale?: number;
+}
+
+export async function encodeGif(frames: Frame[], options: RenderOptions, fps: number, enc: EncodeOptions = {}): Promise<Buffer> {
   if (frames.length === 0) {
     throw new Error('encodeGif requires at least one frame');
   }
@@ -98,14 +106,14 @@ export async function encodeGif(frames: Frame[], options: RenderOptions, fps: nu
 
   for (let i = 0; i < encodable.length; i++) {
     const svg = renderGridFrame(encodable[i].frame, options);
-    const resvg = new Resvg(svg, { font: fontOpts });
+    const resvg = new Resvg(svg, { font: fontOpts, fitTo: enc.scale && enc.scale !== 1 ? { mode: 'zoom', value: enc.scale } : { mode: 'original' } });
     const rendered = resvg.render();
     const { pixels, width, height } = rendered;
 
     const palette = quantize(pixels, 256);
     const indexed = applyPalette(pixels, palette);
 
-    encoder.writeFrame(indexed, width, height, { palette, delay: encodable[i].delayMs, first: i === 0 });
+    encoder.writeFrame(indexed, width, height, { palette, delay: encodable[i].delayMs, first: i === 0, repeat: enc.loop === false ? -1 : 0 });
   }
 
   encoder.finish();
