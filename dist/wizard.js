@@ -43,7 +43,8 @@ const q = (s) => `'${s.replace(/'/g, `'\\''`)}'`;
 const FORMATS = ['svg', 'gif', 'png', 'html'];
 /** Step-by-step helper for beginners: asks, shows the exact command, runs it. */
 async function wizard() {
-    const lines = readline.createInterface({ input: process.stdin, output: process.stderr })[Symbol.asyncIterator]();
+    const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
+    const lines = rl[Symbol.asyncIterator]();
     const ask = async (question, def = '') => {
         process.stderr.write(`${question}${def ? ` [${def}]` : ''} › `);
         const { value, done } = await lines.next();
@@ -119,5 +120,8 @@ async function wizard() {
     catch (e) {
         if (e.message !== 'end')
             throw e;
+    }
+    finally {
+        rl.close();
     }
 }
