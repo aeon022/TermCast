@@ -9,39 +9,81 @@ export interface LicenseValidationResult {
   licenseKey?: string;
 }
 
+// aeon022's Polar.sh organization (public: customers need it to validate keys, no secret involved).
+const POLAR_ORG_ID = 'aa792ea4-650e-492e-a955-9b3d564e943e';
+const POLAR_VALIDATE_URL = 'https://api.polar.sh/v1/customer-portal/license-keys/validate';
+// Benefit IDs that unlock this tool. Empty = any granted key of the organization (Bundle, Family, ...)
+// until a dedicated product exists; then list its benefit ID here.
+const ALLOWED_BENEFIT_IDS: string[] = [];
+
+const RECHECK_MS = 24 * 60 * 60 * 1000; // a saved key is re-validated at most once a day
+const OFFLINE_GRACE_MS = 21 * 24 * 60 * 60 * 1000; // ... and keeps working this long without reaching Polar
+
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'termcast');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
-export async function getSavedLicenseKey(): Promise<string | undefined> {
+interface SavedConfig {
+  licenseKey?: string;
+  validatedAt?: string;
+}
+
+async function readConfig(): Promise<SavedConfig> {
   try {
-    if (await fs.pathExists(CONFIG_FILE)) {
-      const config = await fs.readJson(CONFIG_FILE);
-      return config.licenseKey;
-    }
+    if (await fs.pathExists(CONFIG_FILE)) return (await fs.readJson(CONFIG_FILE)) as SavedConfig;
   } catch {
     // ignore
   }
-  return undefined;
+  return {};
+}
+
+async function writeConfig(cfg: SavedConfig): Promise<void> {
+  await fs.ensureDir(CONFIG_DIR);
+  await fs.writeJson(CONFIG_FILE, cfg, { spaces: 2, mode: 0o600 });
+  await fs.chmod(CONFIG_FILE, 0o600); // also tighten a file written by an older version
+}
+
+export async function getSavedLicenseKey(): Promise<string | undefined> {
+  return (await readConfig()).licenseKey;
 }
 
 export async function saveLicenseKey(licenseKey: string): Promise<LicenseValidationResult> {
-  const result = await validatePolarLicense(licenseKey);
-  if (result.valid) {
-    await fs.ensureDir(CONFIG_DIR);
-    await fs.writeJson(CONFIG_FILE, { licenseKey, validatedAt: new Date().toISOString() }, { spaces: 2, mode: 0o600 });
-    await fs.chmod(CONFIG_FILE, 0o600); // also tighten a file written by an older version
-  }
+  const result = await checkWithPolar(licenseKey.trim());
+  if (result.valid) await writeConfig({ licenseKey: licenseKey.trim(), validatedAt: new Date().toISOString() });
   return result;
 }
 
 export async function clearSavedLicense(): Promise<void> {
-  if (await fs.pathExists(CONFIG_FILE)) {
-    await fs.remove(CONFIG_FILE);
+  if (await fs.pathExists(CONFIG_FILE)) await fs.remove(CONFIG_FILE);
+}
+
+/** Asks Polar whether the key is granted (unauthenticated customer-portal endpoint). */
+async function checkWithPolar(cleanKey: string): Promise<LicenseValidationResult> {
+  try {
+    const res = await fetch(POLAR_VALIDATE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: cleanKey, organization_id: POLAR_ORG_ID }),
+      timeout: 10000
+    });
+    if (res.status >= 500) {
+      return { valid: false, message: 'Polar is unavailable right now. Try again later; your key was not rejected.', licenseKey: cleanKey };
+    }
+    const data: any = await res.json().catch(() => ({}));
+    if (res.ok && data.status === 'granted') {
+      if (ALLOWED_BENEFIT_IDS.length === 0 || ALLOWED_BENEFIT_IDS.includes(data.benefit_id)) {
+        return { valid: true, message: 'PRO LICENSE ACTIVE (verified via Polar.sh)', licenseKey: cleanKey };
+      }
+      return { valid: false, message: 'This license key does not include TermCast Pro.', licenseKey: cleanKey };
+    }
+    return { valid: false, message: 'INVALID LICENSE KEY', licenseKey: cleanKey };
+  } catch {
+    return { valid: false, message: 'Could not reach Polar. Check your connection.', licenseKey: cleanKey, };
   }
 }
 
 export async function validatePolarLicense(licenseKey?: string): Promise<LicenseValidationResult> {
-  const keyToTest = licenseKey || process.env.POLAR_LICENSE_KEY || (await getSavedLicenseKey());
+  const saved = await readConfig();
+  const keyToTest = licenseKey || process.env.POLAR_LICENSE_KEY || saved.licenseKey;
 
   if (!keyToTest || keyToTest.trim() === '') {
     return {
@@ -51,34 +93,22 @@ export async function validatePolarLicense(licenseKey?: string): Promise<License
   }
 
   const cleanKey = keyToTest.trim();
+  const checkedAt = saved.licenseKey === cleanKey && saved.validatedAt ? Date.parse(saved.validatedAt) : NaN;
+  const age = Number.isNaN(checkedAt) ? Infinity : Date.now() - checkedAt;
 
-  try {
-    // The old code called Polar's /v1/license-keys/validate directly, which
-    // requires an organization auth token and always returns 401 from a
-    // client with none — meaning this call never actually succeeded, and
-    // every "PRO" grant went through the (now removed) any-key-shaped
-    // fallback below. Route through the shared verify backend instead,
-    // which calls Polar's unauthenticated customer-portal validate
-    // endpoint server-side.
-    const res = await fetch('https://api.abteilung83.at/verify', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ key: cleanKey })
-    });
-
-    if (res.status >= 500) {
-      return { valid: false, message: 'License server unavailable right now. Try again later; your key was not rejected.', licenseKey: cleanKey };
-    }
-    const data: any = await res.json().catch(() => ({}));
-    if (res.ok && data.valid) {
-      return { valid: true, message: 'PRO LICENSE ACTIVE (Verified via Polar.sh)', licenseKey: cleanKey };
-    }
-    return { valid: false, message: 'INVALID LICENSE KEY', licenseKey: cleanKey };
-  } catch {
-    return { valid: false, message: 'Could not reach license server. Check your connection.', licenseKey: cleanKey };
+  if (age < RECHECK_MS) {
+    return { valid: true, message: 'PRO LICENSE ACTIVE (checked today)', licenseKey: cleanKey };
   }
+
+  const result = await checkWithPolar(cleanKey);
+  if (result.valid && saved.licenseKey === cleanKey) {
+    await writeConfig({ licenseKey: cleanKey, validatedAt: new Date().toISOString() });
+  }
+  // Polar can't be reached: a key that was valid recently keeps working for the grace period.
+  if (!result.valid && /unavailable|Could not reach/.test(result.message) && age < OFFLINE_GRACE_MS) {
+    return { valid: true, message: 'PRO LICENSE ACTIVE (offline, last check within 21 days)', licenseKey: cleanKey };
+  }
+  return result;
 }
 
 /** Shows only the start and end of a key so it can be printed without leaking it. */
