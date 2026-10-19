@@ -1,6 +1,6 @@
 {
   "name": "ttyreel",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Turn terminal output into polished SVG, GIF, PNG and HTML: record a command, type and script demos, import asciinema casts. Masks secrets automatically.",
   "keywords": [
     "terminal",

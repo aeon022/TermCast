@@ -54,7 +54,7 @@ const program = new commander_1.Command();
 program
     .name('ttyreel')
     .description('Turn terminal output into polished SVG, GIF, PNG and HTML: recorded, typed, scripted or imported from asciinema')
-    .version('0.2.0');
+    .version('0.2.1');
 const fail = (err, what = 'Error') => {
     process.exitCode = 1;
     console.error(`[ttyreel] ${what}: ${err.message || err}`);
