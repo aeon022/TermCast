@@ -1,7 +1,9 @@
 # 🎬 ttyreel
 
+[![npm](https://img.shields.io/npm/v/ttyreel.svg)](https://www.npmjs.com/package/ttyreel)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![ci](https://github.com/aeon022/ttyreel/actions/workflows/ci.yml/badge.svg)](https://github.com/aeon022/ttyreel/actions/workflows/ci.yml)
+[![Support on Polar](https://img.shields.io/badge/Support_ttyreel-Polar-0066FF.svg?style=flat-square&logo=polar)](https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1)
 [![Created by abteilung83](https://img.shields.io/badge/Crafted%20by-abteilung83-black.svg)](https://github.com/aeon022)
 
 **Turn terminal output into polished images for READMEs, docs and posts.** Record a command, type it out like a screencast, run a whole demo from a script, or convert an asciinema recording. Output is SVG (static or animated, light/dark aware), GIF, PNG or HTML with a copy button. Tokens and passwords are **masked automatically**.
@@ -14,20 +16,13 @@
 
 ## Install
 
-Needs Node 18+. Try it without installing:
+Needs Node 18+.
 
 ```bash
-npx github:aeon022/ttyreel demo
+npm install -g ttyreel
 ```
 
-Install it (keep the cloned folder: the global command links to it):
-
-```bash
-git clone https://github.com/aeon022/ttyreel.git
-cd ttyreel
-npm install --omit=dev
-npm install -g .
-```
+Or try it without installing: `npx ttyreel demo`.
 
 `node-pty` (it runs your command in a real terminal) ships ready-made binaries for macOS and Windows. On Linux npm compiles it, so you need a C++ compiler and Python (`sudo apt install build-essential python3`).
 
@@ -117,6 +112,14 @@ Keep README demos current:
 - The GIF/PNG text is drawn with the monospace and symbol fonts installed on your computer. Rare symbols may come from a fallback font and look slightly different; SVG and HTML use the viewer's fonts.
 - Without a licence the images carry a small "Crafted with ttyreel" line. A Pro licence (`ttyreel license <key>`) removes it and supports development: **[ttyreel Pro on Polar](https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1)**. Everything else is free.
 - Third-party notices (colour schemes, dependencies): [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## 💜 Pro license & support
+
+Everything works for free; images just carry a small "Crafted with ttyreel" line. Pro removes it and supports further development:
+
+👉 **[Get ttyreel Pro on Polar](https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1)**
+
+By [abteilung83](https://github.com/aeon022).
 
 ## 📄 License
 

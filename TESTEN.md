@@ -5,10 +5,7 @@ Alles in das Terminal (Kitty) kopieren, mit Enter bestätigen. Zeilen mit `#` si
 ## 1. Installieren (einmalig)
 
 ```bash
-cd ~/Developing/Projects/ttyreel
-git pull
-npm install --omit=dev
-npm install -g .
+npm install -g ttyreel
 ```
 
 ## 2. Prüfen, ob es klappt
