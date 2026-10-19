@@ -26,6 +26,11 @@ export function renderHtmlEmbed(frames: TerminalFrame[], options: RenderOptions 
   });
 
   const rawPlainContent = lines.join('\n').replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+  // The text goes into an inline <script>: a "</script>" in command output must not end it, so < > & and the
+  // JS line separators are written as unicode escapes (still valid JSON, still the same string).
+  const rawForScript = JSON.stringify(rawPlainContent)
+    .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -137,7 +142,7 @@ ${linesHtml}  </div>
 
 <script>
   function copyCode() {
-    const raw = ${JSON.stringify(rawPlainContent)};
+    const raw = ${rawForScript};
     navigator.clipboard.writeText(raw).then(() => {
       const btn = document.querySelector('.termcast-copy');
       btn.innerText = '✓ Copied!';
