@@ -56,7 +56,7 @@ Files are written next to where you run it (`-o path` sets the name, the extensi
 - **Secrets masked:** GitHub, OpenAI/Anthropic-style, AWS, Slack, Stripe and Google keys, JWTs, `Bearer` tokens, passwords in URLs, `password=…`/`token=…` values and private-key blocks are replaced by `•••` in the image **and in the window title** (which usually is the command line). `--redact REGEX` adds your own patterns, `--no-redact` turns it off. It is a safety net, not a guarantee: look at what you publish.
 - **Light and dark:** `--light-theme github-light` makes an SVG that switches with the viewer's colour scheme (GitHub honours this).
 - **Look:** 12 themes, 7 gradients, `--theme-file`, `--font`, `--font-size`, `--padding`, `--no-window`, `--title`.
-- **Preview server:** `serve` is reachable from your computer only (127.0.0.1); with `--watch` it records again when files change.
+- **Preview server:** `serve` is reachable from your computer only (127.0.0.1); with `--watch` it records again when files change (`--no-open` skips opening the browser).
 
 ## Themes and gradients
 

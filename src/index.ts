@@ -269,6 +269,7 @@ recordingOptions(outputOptions(styleOptions(
 styleOptions(program.command('serve <cmd>').description('Record a command and open a live preview in the browser (only reachable from this computer)'))
   .option('--animated', 'Play back the real recorded frames as an animated SVG')
   .option('--port <n>', 'Port to listen on (the next free one is used if it is taken)', '3333')
+  .option('--no-open', 'Do not open the browser')
   .option('--watch <paths...>', 'Record again whenever a file in these folders or files changes; the browser reloads by itself')
   .option('--cols <n>', 'Terminal columns', '80')
   .option('--rows <n>', 'Terminal rows', '24')
@@ -286,7 +287,7 @@ styleOptions(program.command('serve <cmd>').description('Record a command and op
         return opts.animated ? renderAnimatedGridFrames(frames, render) : renderGridFrame(frames[frames.length - 1], render);
       };
       const watching: string[] | undefined = opts.watch;
-      const server = startPreviewServer(await record(), int(opts.port, 'port', 1, 65535), true, Boolean(watching));
+      const server = startPreviewServer(await record(), int(opts.port, 'port', 1, 65535), opts.open !== false, Boolean(watching));
       if (watching && watching.length) {
         let busy = false;
         let again = false;

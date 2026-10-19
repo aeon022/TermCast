@@ -94,3 +94,44 @@ test('--no-window, --font-size, --padding change the geometry', () => {
   assert.ok(dim('f.svg', 'width') > dim('a.svg', 'width'), 'a larger font needs a wider image');
   assert.doesNotMatch(read('b.svg').toString(), /#FF5F56/);
 });
+
+const { spawn } = require('node:child_process');
+const http = require('node:http');
+
+test('serve --watch: viewer page, loopback only, and a file change re-records and reloads the browser', async () => {
+  const watchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ttr-watch-'));
+  fs.writeFileSync(path.join(watchDir, 'a.txt'), '1');
+  const child = spawn('node', [bin, 'serve', `cat ${path.join(watchDir, 'a.txt')}`, '--watch', watchDir, '--port', '39611', '--no-open', '--cols', '30', '--rows', '4'], {
+    env: { ...process.env, HOME: home }, cwd: home
+  });
+  let out = '';
+  child.stdout.on('data', (d) => (out += d));
+  child.stderr.on('data', (d) => (out += d));
+  const waitFor = async (re, ms = 15000) => {
+    const t0 = Date.now();
+    while (!re.test(out)) {
+      if (Date.now() - t0 > ms) throw new Error(`timeout waiting for ${re}; output so far:\n${out}`);
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  };
+  const get = (p) => new Promise((resolve, reject) => http.get({ host: '127.0.0.1', port: 39611, path: p, agent: false }, (res) => { let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => resolve(b)); }).on('error', reject));
+  try {
+    await waitFor(/Live Preview running at: http:\/\/127\.0\.0\.1:39611/);
+    await waitFor(/Watching /);
+    assert.match(await get('/'), /EventSource/);
+    assert.match(await get('/image.svg'), /<svg/);
+    assert.ok(!/localhost|0\.0\.0\.0/.test(out), 'only the loopback address is announced');
+    const event = new Promise((resolve, reject) => {
+      const req = http.get({ host: '127.0.0.1', port: 39611, path: '/events', agent: false }, (res) => {
+        let b = '';
+        res.on('data', (d) => { b += d; if (b.includes('connected')) fs.writeFileSync(path.join(watchDir, 'a.txt'), 'changed'); if (b.includes('data: reload')) { req.destroy(); resolve(b); } });
+      });
+      req.on('error', (e) => { if (e.code !== 'ECONNRESET') reject(e); });
+      setTimeout(() => reject(new Error('no reload after the file changed')), 15000);
+    });
+    await event;
+    assert.match(await get('/image.svg'), /changed/);
+  } finally {
+    child.kill();
+  }
+});
