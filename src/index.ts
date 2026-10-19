@@ -5,7 +5,7 @@ import * as path from 'path';
 import { renderSvgFrame, renderGridFrame, renderAnimatedGridFrames } from './renderer/svg';
 import { renderHtmlEmbed } from './renderer/html';
 import { startPreviewServer } from './server';
-import { validatePolarLicense, saveLicenseKey, clearSavedLicense, getSavedLicenseKey } from './license';
+import { validatePolarLicense, saveLicenseKey, clearSavedLicense, getSavedLicenseKey, maskKey } from './license';
 import { recordCommand } from './recorder';
 import { encodeGif } from './gif';
 import { RenderOptions, TerminalFrame, ThemeName, GradientPreset, PromptStyle } from './types';
@@ -32,7 +32,7 @@ program
       }
 
       if (key) {
-        console.log(`[TermCast] Validating license key: ${key}...`);
+        console.log('[TermCast] Validating license key...');
         const result = await saveLicenseKey(key);
         if (result.valid) {
           console.log(`\n✨ ${result.message}`);
@@ -49,12 +49,13 @@ program
       const result = await validatePolarLicense(activeKey);
       console.log('\n[TermCast] License Status:');
       console.log(`  State : ${result.valid ? 'PRO ACTIVE ✓' : 'FREE TIER'}`);
-      console.log(`  Key   : ${activeKey ? activeKey : 'None'}`);
+      console.log(`  Key   : ${activeKey ? maskKey(activeKey) : 'None'}`);
       console.log(`  Info  : ${result.message}`);
       if (!result.valid) {
         console.log('\n💡 Buy Pro License: https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH\n');
       }
     } catch (err: any) {
+      process.exitCode = 1;
       console.error(`[TermCast] License error: ${err.message}`);
     }
   });
@@ -110,9 +111,10 @@ program
 
       console.log('\n[TermCast] Execution finished successfully.\n');
       if (!licenseCheck.valid) {
-        console.log('💡 Remove watermark & unlock custom gradients: https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH');
+        console.log('💡 Support development and remove the watermark: https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH');
       }
     } catch (err: any) {
+      process.exitCode = 1;
       console.error(`[TermCast] Error generating demo: ${err.message}`);
     }
   });
@@ -188,9 +190,10 @@ program
 
       console.log('\n[TermCast] Recording finished successfully.\n');
       if (!licenseCheck.valid) {
-        console.log('💡 Remove watermark & unlock custom gradients: https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH');
+        console.log('💡 Support development and remove the watermark: https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH');
       }
     } catch (err: any) {
+      process.exitCode = 1;
       console.error(`[TermCast] Error: ${err.message}`);
     }
   });
@@ -224,6 +227,7 @@ program
 
       startPreviewServer(svg, 3333);
     } catch (err: any) {
+      process.exitCode = 1;
       console.error(`[TermCast] Preview Error: ${err.message}`);
     }
   });

@@ -1,11 +1,10 @@
 # 🎬 TermCast: Pretty Terminal SVG & GIF Studio
 
-[![npm version](https://img.shields.io/npm/v/termcast.svg)](https://www.npmjs.com/package/termcast)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Support on Polar](https://img.shields.io/badge/Support_TermCast-Polar-0066FF.svg?style=flat-square&logo=polar)](https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH)
 [![Created by abteilung83](https://img.shields.io/badge/Crafted%20by-abteilung83-black.svg)](https://github.com/aeon022)
 
-**TermCast** is a zero-dependency CLI tool engineered by **abteilung83**. It captures terminal outputs or shell commands, applies modern developer aesthetics (macOS glassmorphism window frame with traffic-light buttons, vibrant gradient backgrounds, syntax themes), and exports crisp, scalable vector SVGs and interactive HTML embeds for GitHub READMEs, ProductHunt launches, and X/Twitter demos.
+**TermCast** is a CLI tool engineered by **abteilung83**. It captures terminal outputs or shell commands, applies modern developer aesthetics (macOS glassmorphism window frame with traffic-light buttons, vibrant gradient backgrounds, syntax themes), and exports crisp, scalable vector SVGs and interactive HTML embeds for GitHub READMEs, ProductHunt launches, and X/Twitter demos.
 
 ---
 
@@ -15,18 +14,20 @@
 - 🌈 **7 Gradient Canvas Presets (`-g cyberpunk / sunset / matrix / hyper / neon / midnight`)**: Instant vibrant gradient backgrounds.
 - 💡 **Interactive HTML Embeds (`--format html`)**: Standalone HTML component with a **Copy Code** button, line numbers, and hover effects.
 - ⚡ **Instant Live Preview Web Server (`termcast serve`)**: Launches a local web server to preview your rendered terminal graphics in real-time in your browser!
-- 🤖 **ZSH & Starship Prompt Generators (`--prompt zsh / starship`)**: Renders ZSH or Starship shell badges (`main 🌿`, `📁 my-app`).
+- 🤖 **ZSH & Starship Prompt Generators (`demo --prompt zsh / starship`)**: Renders ZSH or Starship shell badges (`main 🌿`, `📁 my-app`).
 
 ---
 
 ## 🚀 Quickstart & Tutorial
 
 ### 1. Installation
-Install globally via npm or run directly using `npx`:
+Install straight from GitHub (Node 18+; the package builds itself on install):
 
 ```bash
-npm install -g termcast
+npm install -g github:aeon022/TermCast
 ```
+
+> **Do not run `npm install -g termcast`:** that name on npm belongs to a different project ("Raycast for the terminal"), not to this tool.
 
 ### 2. Generate Animated Demo SVG & HTML Embed
 Generate animated graphics with custom gradient background:

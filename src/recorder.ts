@@ -1,4 +1,6 @@
 import * as pty from 'node-pty';
+import * as fs from 'fs';
+import * as path from 'path';
 import { Terminal } from '@xterm/headless';
 import { Cell, Frame, RecordOptions, RecordResult, ThemeName } from './types';
 import { resolveColor } from './colorResolve';
@@ -8,6 +10,19 @@ const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
 const DEFAULT_FPS = 10;
 const DEFAULT_MAX_DURATION_MS = 30000;
+
+// npm can install node-pty's prebuilt spawn-helper without the execute bit, which makes every
+// spawn fail with "posix_spawnp failed". Restore it before the first spawn (no-op elsewhere).
+function ensureSpawnHelperExecutable(): void {
+  if (process.platform === 'win32') return;
+  try {
+    const dir = path.join(path.dirname(require.resolve('node-pty/package.json')), 'prebuilds', `${process.platform}-${process.arch}`);
+    const helper = path.join(dir, 'spawn-helper');
+    if (fs.existsSync(helper) && (fs.statSync(helper).mode & 0o111) === 0) fs.chmodSync(helper, 0o755);
+  } catch {
+    // best effort: a source build or a read-only install keeps working or fails with the original error
+  }
+}
 
 function snapshotFrame(term: Terminal, themeName: ThemeName, timestampMs: number): Frame {
   const theme = THEMES[themeName] || THEMES.dracula;
@@ -65,6 +80,7 @@ export function recordCommand(cmdString: string, options: RecordOptions = {}): P
 
     let ptyProcess: pty.IPty;
     try {
+      ensureSpawnHelperExecutable();
       ptyProcess = pty.spawn(shell, shellArgs, {
         name: 'xterm-256color',
         cols,

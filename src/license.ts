@@ -28,7 +28,8 @@ export async function saveLicenseKey(licenseKey: string): Promise<LicenseValidat
   const result = await validatePolarLicense(licenseKey);
   if (result.valid) {
     await fs.ensureDir(CONFIG_DIR);
-    await fs.writeJson(CONFIG_FILE, { licenseKey, validatedAt: new Date().toISOString() }, { spaces: 2 });
+    await fs.writeJson(CONFIG_FILE, { licenseKey, validatedAt: new Date().toISOString() }, { spaces: 2, mode: 0o600 });
+    await fs.chmod(CONFIG_FILE, 0o600); // also tighten a file written by an older version
   }
   return result;
 }
@@ -51,10 +52,6 @@ export async function validatePolarLicense(licenseKey?: string): Promise<License
 
   const cleanKey = keyToTest.trim();
 
-  if (cleanKey === 'A83-OFFLINE-DEV') {
-    return { valid: true, message: 'PRO LICENSE ACTIVE (Offline Mode)', licenseKey: cleanKey };
-  }
-
   try {
     // The old code called Polar's /v1/license-keys/validate directly, which
     // requires an organization auth token and always returns 401 from a
@@ -71,6 +68,9 @@ export async function validatePolarLicense(licenseKey?: string): Promise<License
       body: JSON.stringify({ key: cleanKey })
     });
 
+    if (res.status >= 500) {
+      return { valid: false, message: 'License server unavailable right now. Try again later; your key was not rejected.', licenseKey: cleanKey };
+    }
     const data: any = await res.json().catch(() => ({}));
     if (res.ok && data.valid) {
       return { valid: true, message: 'PRO LICENSE ACTIVE (Verified via Polar.sh)', licenseKey: cleanKey };
@@ -79,4 +79,9 @@ export async function validatePolarLicense(licenseKey?: string): Promise<License
   } catch {
     return { valid: false, message: 'Could not reach license server. Check your connection.', licenseKey: cleanKey };
   }
+}
+
+/** Shows only the start and end of a key so it can be printed without leaking it. */
+export function maskKey(key: string): string {
+  return key.length <= 10 ? '****' : `${key.slice(0, 4)}…${key.slice(-4)}`;
 }

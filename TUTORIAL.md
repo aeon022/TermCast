@@ -21,13 +21,13 @@ Welcome to the **TermCast** tutorial! This guide covers real-world workflows, co
 Install TermCast globally via npm:
 
 ```bash
-npm install -g termcast
+npm install -g github:aeon022/TermCast
 ```
 
 Or run any command without installing via `npx`:
 
 ```bash
-npx termcast demo
+npx github:aeon022/TermCast demo
 ```
 
 ---

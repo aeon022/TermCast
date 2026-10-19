@@ -1,6 +1,6 @@
 # 🎬 TermCast: Pretty Terminal GIF & SVG Studio (CLI)
 
-**TermCast** is a zero-dependency CLI tool that captures terminal output, applies modern developer aesthetics (macOS glassmorphism window frames, vibrant gradient backgrounds, syntax highlighting themes), and exports crisp animated SVGs or GIFs for GitHub READMEs, ProductHunt launches, and X/Twitter demos.
+**TermCast** is a CLI tool that captures terminal output, applies modern developer aesthetics (macOS glassmorphism window frames, vibrant gradient backgrounds, syntax highlighting themes), and exports crisp animated SVGs or GIFs for GitHub READMEs, ProductHunt launches, and X/Twitter demos.
 
 ---
 
