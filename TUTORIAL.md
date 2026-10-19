@@ -126,7 +126,7 @@ Unlock watermark removal and custom styling by activating your Polar license key
 termcast render "git status" --license polar_cl_YOUR_POLAR_KEY
 ```
 
-👉 **[Get Pro License on Polar](https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH)**
+👉 **[Get Pro License on Polar](https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1)**
 
 ---
 

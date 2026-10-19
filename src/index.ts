@@ -39,7 +39,7 @@ program
           console.log('   License successfully activated and saved locally!\n');
         } else {
           console.error(`\n❌ ${result.message}`);
-          console.error('   Please verify your key at https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH\n');
+          console.error('   Please verify your key at https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1\n');
         }
         return;
       }
@@ -52,7 +52,7 @@ program
       console.log(`  Key   : ${activeKey ? maskKey(activeKey) : 'None'}`);
       console.log(`  Info  : ${result.message}`);
       if (!result.valid) {
-        console.log('\n💡 Buy Pro License: https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH\n');
+        console.log('\n💡 Buy Pro License: https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1\n');
       }
     } catch (err: any) {
       process.exitCode = 1;
@@ -111,7 +111,7 @@ program
 
       console.log('\n[TermCast] Execution finished successfully.\n');
       if (!licenseCheck.valid) {
-        console.log('💡 Support development and remove the watermark: https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH');
+        console.log('💡 Support development and remove the watermark: https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1');
       }
     } catch (err: any) {
       process.exitCode = 1;
@@ -190,7 +190,7 @@ program
 
       console.log('\n[TermCast] Recording finished successfully.\n');
       if (!licenseCheck.valid) {
-        console.log('💡 Support development and remove the watermark: https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH');
+        console.log('💡 Support development and remove the watermark: https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1');
       }
     } catch (err: any) {
       process.exitCode = 1;

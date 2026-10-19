@@ -1,7 +1,7 @@
 # 🎬 TermCast: Pretty Terminal SVG & GIF Studio
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Support on Polar](https://img.shields.io/badge/Support_TermCast-Polar-0066FF.svg?style=flat-square&logo=polar)](https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH)
+[![Support on Polar](https://img.shields.io/badge/Support_TermCast-Polar-0066FF.svg?style=flat-square&logo=polar)](https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1)
 [![Created by abteilung83](https://img.shields.io/badge/Crafted%20by-abteilung83-black.svg)](https://github.com/aeon022)
 
 **TermCast** is a CLI tool engineered by **abteilung83**. It captures terminal outputs or shell commands, applies modern developer aesthetics (macOS glassmorphism window frame with traffic-light buttons, vibrant gradient backgrounds, syntax themes), and exports crisp, scalable vector SVGs and interactive HTML embeds for GitHub READMEs, ProductHunt launches, and X/Twitter demos.
@@ -75,7 +75,7 @@ termcast serve "npm test"
 
 Support further development and remove the watermark!
 
-👉 **[Support & Unlock Pro on Polar](https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH)**
+👉 **[Support & Unlock Pro on Polar](https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1)**
 
 ---
 

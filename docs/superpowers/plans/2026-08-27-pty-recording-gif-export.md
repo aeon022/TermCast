@@ -961,7 +961,7 @@ program
 
       console.log('\n[TermCast] Recording finished successfully.\n');
       if (!licenseCheck.valid) {
-        console.log('💡 Remove watermark & unlock custom gradients: https://buy.polar.sh/polar_cl_BN6xwyJH2Drn6WuzvV49E2KCGauvtoTHixD3w1hCpSH');
+        console.log('💡 Remove watermark & unlock custom gradients: https://buy.polar.sh/polar_cl_H2APhJzqleLe4Z7FjOmFQ2yGColjaWTqqzhyr2oN5K1');
       }
     } catch (err: any) {
       console.error(`[TermCast] Error: ${err.message}`);
